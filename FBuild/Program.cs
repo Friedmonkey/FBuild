@@ -1,4 +1,5 @@
 ﻿using FBuild.Assembler;
+using FBuild.Common;
 using System;
 using System.IO;
 
@@ -85,13 +86,15 @@ internal class Program
             inputFile = "input.flasm";
             //return;
         }
+        ConsoleLogger logger = new ConsoleLogger();
+        FriedAssembler assembler = new FriedAssembler(logger);
 
         // Determine action
         if (assemble)
         {
             Console.WriteLine($"Assembling '{inputFile}' -> '{outputFile ?? "output.fxe"}'.");
             string text = File.ReadAllText(inputFile);
-            FriedAssembler assembler = new FriedAssembler();
+            assembler.Parse(text);
             // Call assembler logic here
         }
         else if (disassemble)

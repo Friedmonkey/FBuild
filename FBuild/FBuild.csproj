@@ -7,7 +7,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FBuild.Assembler\FBuild.Assembler.csproj" />
+    <ProjectReference Include="..\FBuild.Common\FBuild.Common.csproj" />
     <ProjectReference Include="..\FBuild.Compiler\FBuild.Compiler.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="input.flasm">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

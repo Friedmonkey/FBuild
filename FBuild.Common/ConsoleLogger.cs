@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace FBuild.Common;
-
-internal class ConsoleLogger : Ilogger
+public class ConsoleLogger : Ilogger
 {
     private List<LogMessage> logMessages { get; set; } = new List<LogMessage>();
     public int Count(LogType filter) => logMessages.Where(m => filter.HasFlag(m.LogType)).Count();

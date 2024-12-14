@@ -1,6 +1,12 @@
 ﻿declare msg = "Hello world";
 
-push 60
-push  9
-add
+jmp lol
+push msg
+syscall print
+:lol
 exit
+
+//push 60
+//push  9
+//add
+//exit

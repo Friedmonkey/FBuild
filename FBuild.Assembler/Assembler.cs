@@ -81,7 +81,9 @@ public class FriedAssembler : AnalizerBase<char>
         //initial
         UpdateAndReset();
 
-        //parse includes
+        input = ParseComments(input);
+        UpdateAndReset();
+
         input = ParseIncludes(input);
         UpdateAndReset();
 
@@ -97,8 +99,8 @@ public class FriedAssembler : AnalizerBase<char>
         //replace all :labelname with labals[labalname]
         //replace all declarename with declares[declarename].index
         // by going troguh labels.keys and foreach declares (for loop cus we need index)
-        //input = ParseAndResolveLabelAndInstructionAddresses(input); 
-        //UpdateAndReset();
+        input = ParseAndResolveLabelAndInstructionAddresses(input);
+        UpdateAndReset();
 
         //convert string like "20 54 6A" to actual bytes
         string[] hexValuesSplit = input.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -204,13 +206,14 @@ public class FriedAssembler : AnalizerBase<char>
                 if (declare is not null)
                 {
                     declare.used = true;
-                    bytes.AddRange(declare.value);
+                    //bytes.AddRange(declare.value);
+                    bytes.AddRange(Declares.IndexOf(declare).ToByteArrayWithNegative());
                     address = varName;
                 }
-                else if (syscalls.Contains(varName))
+                else if (syscalls.Contains(varName.ToUpper()))
                 { 
                     //address = varName; //maby im not sure
-                    bytes.AddRange(syscalls.IndexOf(varName).ToByteArrayWithNegative());
+                    bytes.AddRange(syscalls.IndexOf(varName.ToUpper()).ToByteArrayWithNegative());
                 }
                 else if (Labels.ContainsKey(varName))
                 {
@@ -220,13 +223,15 @@ public class FriedAssembler : AnalizerBase<char>
                     if (addr != -1)
                         bytes.AddRange(addr.ToByteArrayWithNegative());
                     else
-                        throw new Exception($"Label \"{varName}\" doest have an address yet!");
+                    {
+                        address = varName;
+                        //throw new Exception($"Label \"{varName}\" doest have an address yet!");
+                    }
                 }
                 else
                 {
-                    throw new Exception("big fat error, should never happen!11!");
+                    throw new Exception($"Identifier:{varName} not found, its not a label nor syscall nor a declared varible");
                 }
-                throw new NotImplementedException("varibles/labels are not supported yet!!11!");
             }
             else
             {
@@ -243,6 +248,26 @@ public class FriedAssembler : AnalizerBase<char>
         if (Labels.ContainsKey(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} label with name \"{name}\" already exists!");
         if (Instruction_definitions.ContainsKey(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} instruction with name \"{name}\" already exists!");
         if (syscalls.Contains(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} syscall with name \"{name}\" already exists!");
+    }
+    public string ParseAndResolveLabelAndInstructionAddresses(string input)
+    {
+        CurrentlyConsuming = "resolving addresses";
+
+        string FinalText = input;
+
+        var label_keys = Labels.Keys.ToArray();
+        for (int i = 0; i < Labels.Count; i++)
+        {
+            var byte_arr = Labels[label_keys[i]].ToByteArrayWithNegative();
+            string buffer = string.Empty;
+            foreach (byte bite in byte_arr)
+            {
+                buffer += bite.ToString("X2") + " ";
+            }
+            FinalText = FinalText.Replace(label_keys[i], buffer);
+        }
+
+        return FinalText;
     }
     public string ParseInstructions(string input)
     {
@@ -304,7 +329,8 @@ public class FriedAssembler : AnalizerBase<char>
                         if (arg_bytes.Count() > arg_size)
                             arg_size = (byte)arg_bytes.Count();
 
-                        if (string.IsNullOrEmpty(addr))
+#warning this may be not great
+                        if (string.IsNullOrEmpty(addr) || arg_bytes.Count() != 0)
                         {
                             foreach (byte bite in arg_bytes)
                             {
@@ -314,7 +340,7 @@ public class FriedAssembler : AnalizerBase<char>
                         else
                         { 
                             isAddr = true;
-                            arguments += addr; //embed into the string to be replaced later
+                            arguments += addr + " "; //embed into the string to be replaced later
                         }
                         bytes.AddRange(arg_bytes);
                     }
@@ -327,25 +353,6 @@ public class FriedAssembler : AnalizerBase<char>
                     FinalText += instruction.GetByte().ToString("X2")+" ";
                     FinalText += arguments;
                 }
-                //if (FindStart("declare "))
-                //{
-
-
-                //    CheckName(instructionName);
-
-                //    SkipWhitespace();
-                //    Consume('=');
-                //    SkipWhitespace();
-                //    List<byte> bytes = ParseBytes();
-                //    Consume(';');
-
-                //    logger?.LogDetail($"declare {instructionName} was added");
-                //    Declares.Add(new Declare(instructionName, bytes.ToArray()));
-                //}
-                //else
-                //{
-                //    Position++;
-                //}
             }
         }
         return FinalText;
@@ -458,6 +465,28 @@ public class FriedAssembler : AnalizerBase<char>
         }
         return FinalText;
     }
+    public string ParseComments(string input)
+    {
+        CurrentlyConsuming = "comments";
+
+        string FinalText = string.Empty;
+
+        while (Safe)
+        {
+            if (FindStart("//"))
+            {
+                var comment = ConsumeUntilEnter();
+                logger?.LogDetail("Comment removed:"+comment);
+                SkipWhitespace();
+            }
+            else
+            {
+                FinalText += Current;
+                Position++;
+            }
+        }
+        return FinalText;
+    }
 
     private string ConsumeString()
     {
@@ -493,6 +522,16 @@ public class FriedAssembler : AnalizerBase<char>
             }
         }
         return false;
+    }
+    public string ConsumeUntilEnter()
+    {
+        string consumed = string.Empty;
+        while (Safe && !Current.IsEnter())
+        {
+            consumed += Current;
+            Position++;
+        }
+        return consumed;
     }
     public string ConsumeUntil(char stop)
     {

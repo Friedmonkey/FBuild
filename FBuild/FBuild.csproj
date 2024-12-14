@@ -5,4 +5,9 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FBuild.Assembler\FBuild.Assembler.csproj" />
+    <ProjectReference Include="..\FBuild.Compiler\FBuild.Compiler.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,5 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using FBuild.Assembler;
+using System;
+using System.IO;
 
 namespace FBuild;
 
@@ -17,8 +18,10 @@ internal class Program
         // Default action is compile if no parameters are given
         if (args.Length == 0)
         {
-            Console.WriteLine("No arguments provided. Defaulting to -compile.");
-            compile = true;
+            //Console.WriteLine("No arguments provided. Defaulting to -compile.");
+            //compile = true;
+            Console.WriteLine("No arguments provided. Defaulting to -assemble.");
+            assemble = true;
         }
         else
         {
@@ -78,14 +81,17 @@ internal class Program
         // Validate input file
         if (string.IsNullOrEmpty(inputFile))
         {
-            Console.WriteLine("Error: No input file specified.");
-            return;
+            Console.WriteLine("Error: No input file specified, using default: input.flasm");
+            inputFile = "input.flasm";
+            //return;
         }
 
         // Determine action
         if (assemble)
         {
             Console.WriteLine($"Assembling '{inputFile}' -> '{outputFile ?? "output.fxe"}'.");
+            string text = File.ReadAllText(inputFile);
+            FriedAssembler assembler = new FriedAssembler();
             // Call assembler logic here
         }
         else if (disassemble)

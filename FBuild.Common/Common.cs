@@ -1,6 +1,6 @@
 ﻿namespace FBuild.Common;
 
-public class Common
+public class FriedCommon
 {
 
 }

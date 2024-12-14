@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.ConstrainedExecution;
 using System.Xml.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FBuild.Assembler;
 
@@ -22,7 +23,6 @@ public class FriedAssembler : AnalizerBase<char>
     static byte opcode_index = 0;
     static KeyValuePair<string, InstructionDefinition> OP(string name, byte argcount)
     {
-        opcode_index++;
         return new KeyValuePair<string, InstructionDefinition>(name, new InstructionDefinition(name, opcode_index++, argcount));
     }
     private IReadOnlyDictionary<string, InstructionDefinition> Instruction_definitions = new Dictionary<string, InstructionDefinition>(new[]
@@ -47,7 +47,7 @@ public class FriedAssembler : AnalizerBase<char>
         OP("NEQ", 0),
         OP("GT", 0),
         OP("GTEQ", 0),
-        OP("LTEQ", 0),
+        OP("LT", 0),
         OP("LTEQ", 0),
         OP("JMP", 1),
         OP("JMP_IF", 1),
@@ -57,7 +57,7 @@ public class FriedAssembler : AnalizerBase<char>
         OP("SYSCALL", 1),
         OP("EXIT", 0),
     });
-    private IReadOnlyList<string> syscalls = new List<string>() 
+    private List<string> syscalls = new List<string>() 
     {
         "PAUSE",
         "CLEAR",
@@ -91,8 +91,8 @@ public class FriedAssembler : AnalizerBase<char>
         GetLabels(input);
         this.Position = 0;
 
-        ParseInstructions(input);
-        this.Position = 0;
+        input = ParseInstructions(input);
+        UpdateAndReset();
 
         //replace all :labelname with labals[labalname]
         //replace all declarename with declares[declarename].index
@@ -100,12 +100,24 @@ public class FriedAssembler : AnalizerBase<char>
         //input = ParseAndResolveLabelAndInstructionAddresses(input); 
         //UpdateAndReset();
 
+        //convert string like "20 54 6A" to actual bytes
+        string[] hexValuesSplit = input.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        byte[] bytes = new byte[hexValuesSplit.Length];
+
+        for (int i = 0; i < hexValuesSplit.Length; i++)
+        {
+            if (string.IsNullOrEmpty(hexValuesSplit[i]))
+                continue;
+            bytes[i] = Convert.ToByte(hexValuesSplit[i], 16);
+        }
+
         //return input.ToArray();
-        return null;
+        return bytes;
     }
 
-    public List<byte> ParseBytes()
+    public List<byte> ParseBytes(out string address)
     {
+        address = string.Empty;
         List<byte> bytes = new List<byte>();
         do
         {
@@ -113,11 +125,13 @@ public class FriedAssembler : AnalizerBase<char>
             {
                 string str = ConsumeString();
                 foreach (byte b in str) bytes.Add(b);
+                address = string.Empty;
             }
             else if (Current == '\'') //char
             {
                 char chr = ConsumeChar();
                 bytes.Add((byte)chr);
+                address = string.Empty;
             }
             else if (Current == '0' && Peek(1) is 'x' or 'X') //byte 0xFF (only parse 2 hex to make up the byte)
             {
@@ -137,6 +151,7 @@ public class FriedAssembler : AnalizerBase<char>
 
                 byte result = Convert.ToByte(hexText, 16); // Convert hex string to byte
                 bytes.Add(result);
+                address = string.Empty;
             }
             else if (Current == '0' && Peek(1) is 'b' or 'B') //binary 0b00001111 (only parse 8 (0 or 1) to make up the byte)
             {
@@ -156,19 +171,68 @@ public class FriedAssembler : AnalizerBase<char>
 
                 byte result = Convert.ToByte(binaryText, 2); // Convert binary to byte
                 bytes.Add(result);
+                address = string.Empty;
             }
-            else if (char.IsDigit(Current))
+            else if (char.IsDigit(Current)) //normal numbers
             {
-                throw new NotImplementedException("normal numbers are not supported yet!!11!");
+                string numberText = "";
+
+                while (char.IsDigit(Current))
+                {
+                    numberText += Current;
+                    Position++;
+                }
+
+                //convert string to integer
+                if (!int.TryParse(numberText, out int number))
+                    throw new FormatException($"Invalid number format: {numberText}");
+
+                // make bytes
+                bytes.AddRange(number.ToByteArrayWithNegative());
             }
-            else if (Current.IsVarible())
+            else if (Current.IsVarible()) //either label/address or meta/varible/declare
             {
+                string varName = string.Empty;
+                while (Safe && Current.IsVarible())
+                {
+                    varName += Current;
+                    Position++;
+                }
+                ExtraConsumingInfo = $"varName: {varName}";
+
+                var declare = Declares.FirstOrDefault(d => d.name == varName);
+                if (declare is not null)
+                {
+                    declare.used = true;
+                    bytes.AddRange(declare.value);
+                    address = varName;
+                }
+                else if (syscalls.Contains(varName))
+                { 
+                    //address = varName; //maby im not sure
+                    bytes.AddRange(syscalls.IndexOf(varName).ToByteArrayWithNegative());
+                }
+                else if (Labels.ContainsKey(varName))
+                {
+#warning should this be address or no?
+                    //address = varName; //maby im not sure
+                    var addr = Labels[varName];
+                    if (addr != -1)
+                        bytes.AddRange(addr.ToByteArrayWithNegative());
+                    else
+                        throw new Exception($"Label \"{varName}\" doest have an address yet!");
+                }
+                else
+                {
+                    throw new Exception("big fat error, should never happen!11!");
+                }
                 throw new NotImplementedException("varibles/labels are not supported yet!!11!");
             }
             else
             {
                 throw new Exception($"Unexpected \"{Current}\" while parsing declare, expected either a byte(00) char('H') or string(\"hello\")");
             }
+            SkipWhitespace();
         }
         while (Safe && Current == ',');
         return bytes;
@@ -178,11 +242,14 @@ public class FriedAssembler : AnalizerBase<char>
         if (Declares.Any(d => d.name == name)) throw new Exception($"Error parsing: {CurrentlyConsuming} declare with name \"{name}\" already exists!");
         if (Labels.ContainsKey(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} label with name \"{name}\" already exists!");
         if (Instruction_definitions.ContainsKey(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} instruction with name \"{name}\" already exists!");
+        if (syscalls.Contains(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} syscall with name \"{name}\" already exists!");
     }
-    public void ParseInstructions(string input)
+    public string ParseInstructions(string input)
     {
         int address_offset = 0;
         CurrentlyConsuming = "instructions and label addresses";
+
+        string FinalText = string.Empty;
         while (Safe)
         {
             SkipWhitespace();
@@ -214,38 +281,74 @@ public class FriedAssembler : AnalizerBase<char>
                     instructionName += Current;
                     Position++;
                 }
+                instructionName = instructionName.ToUpper();
+                SkipWhitespace();
                 ExtraConsumingInfo = $"instructionName: {instructionName}";
 
-                if (Instruction_definitions.ContainsKey(instructionName.ToUpper()))
+                if (Instruction_definitions.TryGetValue(instructionName, out InstructionDefinition def))
                 {
-                    var def = Instruction_definitions[instructionName.ToUpper()];
                     byte arg_size = 1;
-                    bool imidiate = false;
-                    Instructions.Add(new Instruction(def, arg_size, imidiate));
+                    bool isAddr = false;
+
+                    List<byte> bytes = new List<byte>();
+                    string arguments = string.Empty;
+                    for (int i = 0; i < def.paramCount; i++)
+                    {
+                        var arg_bytes = ParseBytes(out string addr);
+                        //isAddr |= (!string.IsNullOrEmpty(addr));
+                        if (arg_bytes.Count() > 4)
+                        {
+                            //maby auto generate declaration for this
+                            throw new Exception($"Error {ExtraConsumingInfo} Arguments with size greather than 4 is not supported! But argument number {i} got {arg_bytes.Count()} bytes!");
+                        }
+                        if (arg_bytes.Count() > arg_size)
+                            arg_size = (byte)arg_bytes.Count();
+
+                        if (string.IsNullOrEmpty(addr))
+                        {
+                            foreach (byte bite in arg_bytes)
+                            {
+                                arguments += bite.ToString("X2") + " ";
+                            }
+                        }
+                        else
+                        { 
+                            isAddr = true;
+                            arguments += addr; //embed into the string to be replaced later
+                        }
+                        bytes.AddRange(arg_bytes);
+                    }
+
+                    var instruction = new Instruction(def, arg_size, !isAddr, bytes.ToArray());
+                    Instructions.Add(instruction);
                     address_offset += 1; //the byte for the opcode
                     address_offset += def.paramCount * arg_size; //the amount of parameters
+
+                    FinalText += instruction.GetByte().ToString("X2")+" ";
+                    FinalText += arguments;
                 }
-                if (FindStart("declare "))
-                {
+                //if (FindStart("declare "))
+                //{
 
 
-                    CheckName(instructionName);
+                //    CheckName(instructionName);
 
-                    SkipWhitespace();
-                    Consume('=');
-                    SkipWhitespace();
-                    List<byte> bytes = ParseBytes();
-                    Consume(';');
+                //    SkipWhitespace();
+                //    Consume('=');
+                //    SkipWhitespace();
+                //    List<byte> bytes = ParseBytes();
+                //    Consume(';');
 
-                    logger?.LogDetail($"declare {instructionName} was added");
-                    Declares.Add(new Declare(instructionName, bytes.ToArray()));
-                }
-                else
-                {
-                    Position++;
-                }
+                //    logger?.LogDetail($"declare {instructionName} was added");
+                //    Declares.Add(new Declare(instructionName, bytes.ToArray()));
+                //}
+                //else
+                //{
+                //    Position++;
+                //}
             }
         }
+        return FinalText;
     }
     public void GetLabels(string input)
     {
@@ -296,7 +399,7 @@ public class FriedAssembler : AnalizerBase<char>
                 SkipWhitespace();
                 Consume('=');
                 SkipWhitespace();
-                List<byte> bytes = ParseBytes();
+                List<byte> bytes = ParseBytes(out _);
                 Consume(';');
 
                 logger?.LogDetail($"declare {declareName} was added");

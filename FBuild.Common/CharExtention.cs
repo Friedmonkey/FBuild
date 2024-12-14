@@ -10,4 +10,8 @@ public static class CharExtention
     {
         return char.IsLetter(character) || character == '_';
     }
+    public static bool IsHexDigit(this char chr)
+    {
+        return (chr >= '0' && chr <= '9') || (chr >= 'A' && chr <= 'F') || (chr >= 'a' && chr <= 'f');
+    }
 }

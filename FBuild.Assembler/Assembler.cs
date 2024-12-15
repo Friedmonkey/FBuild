@@ -166,6 +166,8 @@ public class FriedAssembler : AnalizerBase<char>
             { 
                 sb.Append(dec.name.ToByteString());
                 byteCount += (UInt64)dec.name.Count();
+                sb.Append(((byte)0xBB).ToByteString()); //symbol split char, needs to be appended
+                byteCount++;
             }
         }
 

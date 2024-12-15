@@ -103,7 +103,8 @@ public class FriedAssembler : AnalizerBase<char>
         input = ParseAndResolveLabelAndInstructionAddresses(input);
         UpdateAndReset();
 
-        input = FinalGenerator(input, address_offset, 1, true);
+        bool hasSymbols = true;
+        input = FinalGenerator(input, address_offset, Size.Eight, Size.Four, hasSymbols, 1);
         UpdateAndReset();
 
         //convert string like "20 54 6A" to actual bytes
@@ -120,11 +121,46 @@ public class FriedAssembler : AnalizerBase<char>
         //return input.ToArray();
         return bytes;
     }
-    private string FinalGenerator(string instructions, UInt64 instructions_offset, int version, bool includeSymbols)
+    enum Size : byte
+    {
+        One = 0b00,
+        Two = 0b01,
+        Four = 0b10,
+        Eight = 0b11,
+    }
+    byte GetSize(Size size)
+    {
+        return size switch
+        {
+            Size.One =>     1,
+            Size.Two =>     2,
+            Size.Four =>    4,
+            Size.Eight =>   8,
+            _ => throw new NotSupportedException()
+        };
+    }
+    private byte PackVersion(Size header, Size meta, bool includeSymbols, byte version)
+    {
+        // Ensure version does not exceed 3 bits
+        version &= 0b00000111;
+
+        // Pack all fields into a single byte
+        byte versionByte = (byte)(
+            ((byte)header << 6) |            // Header: shift 6 bits to the left
+            ((byte)meta << 4) |              // Meta: shift 4 bits to the left
+            (includeSymbols ? 0b00001000 : 0) | // IncludeSymbols: add 3rd bit
+            (version & 0b00000111)           // Version: mask lower 3 bits
+        );
+
+        return versionByte;
+    }
+    private string FinalGenerator(string instructions, UInt64 instructions_offset, Size header, Size meta, bool includeSymbols, byte version)
     {
         const string instructionHeader = "%instructionHeader%";
         const string constPoolHeader = "%constPoolHeader%";
         const string symbolHeader = "%symbolHeader%";
+        byte header_size = GetSize(header);
+        byte meta_size = GetSize(meta);
         UInt64 instructionHeaderPos = 0;
         UInt64 constPoolHeaderPos = 0;
         UInt64 symbolHeaderPos = 0;
@@ -132,23 +168,22 @@ public class FriedAssembler : AnalizerBase<char>
         StringBuilder sb = new StringBuilder();
         // Add the magic "FXE" in byte format
         sb.Append("FXE".ToByteString()); // Converts "FXE" to hex (e.g., "46 58 45")
-        // Generate the version byte
-        byte versionByte = (byte)((includeSymbols ? 0x20 : 0x30) | (version & 0x0F)); // 0x20 for symbols, 0x30 otherwise
+        byte versionByte = PackVersion(header, meta, includeSymbols, version);
         sb.Append(versionByte.ToByteString());
         byteCount += 4;//magic
         sb.Append(instructionHeader);
-        byteCount += 8;
+        byteCount += header_size;
         sb.Append(constPoolHeader);
-        byteCount += 8;
+        byteCount += header_size;
         if (includeSymbols)
         {
             sb.Append(symbolHeader);
-            byteCount += 8;
+            byteCount += header_size;
         }
         foreach (Declare dec in Declares)
         {
             sb.Append(((UInt32)dec.value.Count()).ToByteString());
-            byteCount += 4;
+            byteCount += meta_size;
         }
         instructionHeaderPos = byteCount;
         sb.Append(instructions);

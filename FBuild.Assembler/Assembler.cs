@@ -235,6 +235,7 @@ public class FriedAssembler : AnalizerBase<char>
         List<byte> bytes = new List<byte>();
         do
         {
+            SkipWhitespace();
             if (Current == '"') //string
             {
                 string str = ConsumeString();
@@ -351,7 +352,7 @@ public class FriedAssembler : AnalizerBase<char>
             }
             SkipWhitespace();
         }
-        while (Safe && Current == ',');
+        while (Safe && IfConsume(','));
         return bytes;
     }
     public void CheckName(string name)
@@ -451,9 +452,9 @@ public class FriedAssembler : AnalizerBase<char>
                         }
                         else
                         { 
-                            isAddr = true;
                             arguments += addr + " "; //embed into the string to be replaced later
                         }
+                        isAddr = !string.IsNullOrEmpty(addr);
                         bytes.AddRange(arg_bytes);
                     }
 
@@ -666,6 +667,16 @@ public class FriedAssembler : AnalizerBase<char>
         }
         else
             throw new Exception($"Error while parsing {CurrentlyConsuming} {ExtraConsumingInfo}, Expected `{character}` got `{Current}` instead.");
+    }
+    public bool IfConsume(char character)
+    {
+        if (Current == character)
+        {
+            Position++;
+            return true;
+        }
+        else
+            return false; 
     }
     public bool Find(string find)
     {

@@ -1,31 +1,5 @@
-﻿//declare msg = "Hello world";
-
-//push 0
-//push 60
-//:test
-//push 09
-//add
-//exit
-
-
-push 5
+﻿declare msg = "number 20:",20;
+push msg
+syscall print
+push 0
 exit
-
-
-//push 60
-//push 09
-//add
-//exit
-
-//jmp lol
-//push msg
-//syscall print
-//:lol
-//exit
-
-//push 60
-//push  9
-//add
-//exit
-
-//balls

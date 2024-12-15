@@ -3,11 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection.Emit;
-using System.Runtime.ConstrainedExecution;
 using System.Text;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FBuild.Assembler;
 
@@ -69,6 +65,7 @@ public class FriedAssembler : AnalizerBase<char>
     private Dictionary<string, UInt64> Labels = new Dictionary<string, UInt64>();
     private List<Declare> Declares = new List<Declare>();
     private List<Instruction> Instructions = new List<Instruction>();
+    private UInt64 MaxDeclareSize = 0;
     //transform the text over time and eventually turn it into byte array
     public byte[] Parse(string input)
     {
@@ -104,7 +101,10 @@ public class FriedAssembler : AnalizerBase<char>
         UpdateAndReset();
 
         bool hasSymbols = true;
-        input = FinalGenerator(input, address_offset, Size.Eight, Size.Four, hasSymbols, 1);
+        if (Declares.Count() == 0)
+            hasSymbols = false;
+        var MetaSize = MaxDeclareSize.GetAmountOfBytesNeeded();
+        input = FinalGenerator(input, address_offset, MetaSize, hasSymbols, 1);
         UpdateAndReset();
 
         //convert string like "20 54 6A" to actual bytes
@@ -120,13 +120,6 @@ public class FriedAssembler : AnalizerBase<char>
 
         //return input.ToArray();
         return bytes;
-    }
-    enum Size : byte
-    {
-        One = 0b00,
-        Two = 0b01,
-        Four = 0b10,
-        Eight = 0b11,
     }
     byte GetSize(Size size)
     {
@@ -154,12 +147,12 @@ public class FriedAssembler : AnalizerBase<char>
 
         return versionByte;
     }
-    private string FinalGenerator(string instructions, UInt64 instructions_offset, Size header, Size meta, bool includeSymbols, byte version)
+    private string FinalGenerator(string instructions, UInt64 instructions_offset, Size meta, bool includeSymbols, byte version)
     {
         const string instructionHeader = "%instructionHeader%";
         const string constPoolHeader = "%constPoolHeader%";
         const string symbolHeader = "%symbolHeader%";
-        byte header_size = GetSize(header);
+        const string versionByteTemp = "%versionByte%";
         byte meta_size = GetSize(meta);
         UInt64 instructionHeaderPos = 0;
         UInt64 constPoolHeaderPos = 0;
@@ -168,21 +161,20 @@ public class FriedAssembler : AnalizerBase<char>
         StringBuilder sb = new StringBuilder();
         // Add the magic "FXE" in byte format
         sb.Append("FXE".ToByteString()); // Converts "FXE" to hex (e.g., "46 58 45")
-        byte versionByte = PackVersion(header, meta, includeSymbols, version);
-        sb.Append(versionByte.ToByteString());
+        sb.Append(versionByteTemp);
         byteCount += 4;//magic
         sb.Append(instructionHeader);
-        byteCount += header_size;
+        byteCount += 0; //calculate later
         sb.Append(constPoolHeader);
-        byteCount += header_size;
+        byteCount += 0; //calculate later
         if (includeSymbols)
         {
             sb.Append(symbolHeader);
-            byteCount += header_size;
+            byteCount += 0; //calculate later
         }
         foreach (Declare dec in Declares)
         {
-            sb.Append(((UInt32)dec.value.Count()).ToByteString());
+            sb.Append(((UInt64)dec.value.Count()).ToFixedByteArray(meta_size));
             byteCount += meta_size;
         }
         instructionHeaderPos = byteCount;
@@ -208,10 +200,31 @@ public class FriedAssembler : AnalizerBase<char>
 
         string finalText = sb.ToString();
 
-        finalText = finalText.Replace(instructionHeader, instructionHeaderPos.ToByteString());
-        finalText = finalText.Replace(constPoolHeader, constPoolHeaderPos.ToByteString());
+        //calculate the bytes needed for header size
+        int numHeaders = includeSymbols ? 3 : 2;
+        UInt64 largestHeader = includeSymbols ? symbolHeaderPos : constPoolHeaderPos;
+        largestHeader += 8; //go off the largest
+
+        Size bytesNeeded = largestHeader.GetAmountOfBytesNeeded();
+        byte header_size = GetSize(bytesNeeded);
+        byte versionByte = PackVersion(bytesNeeded, meta, includeSymbols, version);
+
+        UInt64 headerOffset = (UInt64)numHeaders * header_size;
+
+        instructionHeaderPos += headerOffset;
+        constPoolHeaderPos += headerOffset;
+        if (includeSymbols)
+            symbolHeaderPos += headerOffset;
+
+        byteCount += headerOffset;
+
+
+        finalText = finalText.Replace(versionByteTemp, versionByte.ToByteString()); //replace the version byte
+
+        finalText = finalText.Replace(instructionHeader, instructionHeaderPos.ToFixedByteArray(header_size));
+        finalText = finalText.Replace(constPoolHeader, constPoolHeaderPos.ToFixedByteArray(header_size));
         if (includeSymbols) 
-            finalText = finalText.Replace(symbolHeader, symbolHeaderPos.ToByteString());
+            finalText = finalText.Replace(symbolHeader, symbolHeaderPos.ToFixedByteArray(header_size));
 
         return finalText;
     }
@@ -507,6 +520,8 @@ public class FriedAssembler : AnalizerBase<char>
                 SkipWhitespace();
                 List<byte> bytes = ParseBytes(out _);
                 Consume(';');
+                if ((UInt64)bytes.Count() > MaxDeclareSize)
+                    MaxDeclareSize = (UInt64)bytes.Count();
 
                 logger?.LogDetail($"declare {declareName} was added");
                 Declares.Add(new Declare(declareName, bytes.ToArray()));

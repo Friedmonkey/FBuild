@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.ConstrainedExecution;
+using System.Text;
 using System.Xml.Linq;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -65,7 +66,7 @@ public class FriedAssembler : AnalizerBase<char>
         "PRINT",
         "DUMP",
     };
-    private Dictionary<string, int> Labels = new Dictionary<string, int>();
+    private Dictionary<string, UInt64> Labels = new Dictionary<string, UInt64>();
     private List<Declare> Declares = new List<Declare>();
     private List<Instruction> Instructions = new List<Instruction>();
     //transform the text over time and eventually turn it into byte array
@@ -93,13 +94,16 @@ public class FriedAssembler : AnalizerBase<char>
         GetLabels(input);
         this.Position = 0;
 
-        input = ParseInstructions(input);
+        input = ParseInstructions(input, out UInt64 address_offset);
         UpdateAndReset();
 
         //replace all :labelname with labals[labalname]
         //replace all declarename with declares[declarename].index
         // by going troguh labels.keys and foreach declares (for loop cus we need index)
         input = ParseAndResolveLabelAndInstructionAddresses(input);
+        UpdateAndReset();
+
+        input = FinalGenerator(input, address_offset, 1, true);
         UpdateAndReset();
 
         //convert string like "20 54 6A" to actual bytes
@@ -115,6 +119,64 @@ public class FriedAssembler : AnalizerBase<char>
 
         //return input.ToArray();
         return bytes;
+    }
+    private string FinalGenerator(string instructions, UInt64 instructions_offset, int version, bool includeSymbols)
+    {
+        const string instructionHeader = "%instructionHeader%";
+        const string constPoolHeader = "%constPoolHeader%";
+        const string symbolHeader = "%symbolHeader%";
+        UInt64 instructionHeaderPos = 0;
+        UInt64 constPoolHeaderPos = 0;
+        UInt64 symbolHeaderPos = 0;
+        UInt64 byteCount = 0;
+        StringBuilder sb = new StringBuilder();
+        // Add the magic "FXE" in byte format
+        sb.Append("FXE".ToByteString()); // Converts "FXE" to hex (e.g., "46 58 45")
+        // Generate the version byte
+        byte versionByte = (byte)((includeSymbols ? 0x20 : 0x30) | (version & 0x0F)); // 0x20 for symbols, 0x30 otherwise
+        sb.Append(versionByte.ToByteString());
+        byteCount += 4;//magic
+        sb.Append(instructionHeader);
+        byteCount += 8;
+        sb.Append(constPoolHeader);
+        byteCount += 8;
+        if (includeSymbols)
+        {
+            sb.Append(symbolHeader);
+            byteCount += 8;
+        }
+        foreach (Declare dec in Declares)
+        {
+            sb.Append(((UInt32)dec.value.Count()).ToByteString());
+            byteCount += 4;
+        }
+        instructionHeaderPos = byteCount;
+        sb.Append(instructions);
+        byteCount += instructions_offset;
+        constPoolHeaderPos = byteCount;
+        foreach (Declare dec in Declares)
+        {
+            sb.Append(dec.value.ToByteString());
+            byteCount += (UInt64)dec.value.Count();
+        }
+        if (includeSymbols)
+        { 
+            symbolHeaderPos = byteCount;
+            foreach (Declare dec in Declares)
+            { 
+                sb.Append(dec.name.ToByteString());
+                byteCount += (UInt64)dec.name.Count();
+            }
+        }
+
+        string finalText = sb.ToString();
+
+        finalText = finalText.Replace(instructionHeader, instructionHeaderPos.ToByteString());
+        finalText = finalText.Replace(constPoolHeader, constPoolHeaderPos.ToByteString());
+        if (includeSymbols) 
+            finalText = finalText.Replace(symbolHeader, symbolHeaderPos.ToByteString());
+
+        return finalText;
     }
 
     public List<byte> ParseBytes(out string address)
@@ -220,8 +282,8 @@ public class FriedAssembler : AnalizerBase<char>
 #warning should this be address or no?
                     //address = varName; //maby im not sure
                     var addr = Labels[varName];
-                    if (addr != -1)
-                        bytes.AddRange(addr.ToByteArrayWithNegative());
+                    if (addr != UInt64.MaxValue)
+                        bytes.AddRange(((int)addr).ToByteArrayWithNegative());
                     else
                     {
                         address = varName;
@@ -258,7 +320,7 @@ public class FriedAssembler : AnalizerBase<char>
         var label_keys = Labels.Keys.ToArray();
         for (int i = 0; i < Labels.Count; i++)
         {
-            var byte_arr = Labels[label_keys[i]].ToByteArrayWithNegative();
+            var byte_arr = ((int)Labels[label_keys[i]]).ToByteArrayWithNegative();
             string buffer = string.Empty;
             foreach (byte bite in byte_arr)
             {
@@ -269,9 +331,9 @@ public class FriedAssembler : AnalizerBase<char>
 
         return FinalText;
     }
-    public string ParseInstructions(string input)
+    public string ParseInstructions(string input, out UInt64 address_offset)
     {
-        int address_offset = 0;
+        address_offset = 0;
         CurrentlyConsuming = "instructions and label addresses";
 
         string FinalText = string.Empty;
@@ -348,7 +410,7 @@ public class FriedAssembler : AnalizerBase<char>
                     var instruction = new Instruction(def, arg_size, !isAddr, bytes.ToArray());
                     Instructions.Add(instruction);
                     address_offset += 1; //the byte for the opcode
-                    address_offset += def.paramCount * arg_size; //the amount of parameters
+                    address_offset += (UInt64)def.paramCount * (UInt64)arg_size; //the amount of parameters
 
                     FinalText += instruction.GetByte().ToString("X2")+" ";
                     FinalText += arguments;
@@ -374,7 +436,7 @@ public class FriedAssembler : AnalizerBase<char>
                 ExtraConsumingInfo = $"labelName: {labelName}";
 
                 CheckName(labelName);
-                Labels.Add(labelName , -1);
+                Labels.Add(labelName , UInt64.MaxValue);
                 logger?.LogDetail($"label {labelName} was added but not initialized yet");
             }
             else

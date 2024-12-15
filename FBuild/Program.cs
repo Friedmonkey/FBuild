@@ -94,7 +94,8 @@ internal class Program
         {
             Console.WriteLine($"Assembling '{inputFile}' -> '{outputFile ?? "output.fxe"}'.");
             string text = File.ReadAllText(inputFile);
-            assembler.Parse(text);
+            var bytes = assembler.Parse(text);
+            File.WriteAllBytes(@"C:\Users\marti\source\repos\FriedVM\assembled.fxe", bytes);
             // Call assembler logic here
         }
         else if (disassemble)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 namespace FBuild.Common;
 
@@ -51,10 +52,64 @@ public static class CharExtention
 
         // 4 bytes: Range -2,147,483,648 to 2,147,483,647
         return new byte[] {
-        (byte)(number & 0xFF),
-        (byte)((number >> 8) & 0xFF),
-        (byte)((number >> 16) & 0xFF),
-        (byte)((number >> 24) & 0xFF)
-    };
+            (byte)(number & 0xFF),
+            (byte)((number >> 8) & 0xFF),
+            (byte)((number >> 16) & 0xFF),
+            (byte)((number >> 24) & 0xFF)
+        };
+    }
+    public static string ToByteString(this UInt32 number)
+    {
+        // 4 bytes: Range 0 to 4,294,967,295
+        return (new byte[] {
+            (byte)(number & 0xFF),
+            (byte)((number >> 8) & 0xFF),
+            (byte)((number >> 16) & 0xFF),
+            (byte)((number >> 24) & 0xFF)
+        }.ToByteString());
+    }
+    public static string ToByteString(this UInt64 number)
+    {
+        // 8 bytes: Range 0 to 18,446,744,073,709,551,615 (should be big enough right?)
+        return (new byte[] {
+            (byte)(number & 0xFF),
+            (byte)((number >> 8) & 0xFF),
+            (byte)((number >> 16) & 0xFF),
+            (byte)((number >> 24) & 0xFF),
+
+            (byte)((number >> 32) & 0xFF),
+            (byte)((number >> 40) & 0xFF),
+            (byte)((number >> 48) & 0xFF),
+            (byte)((number >> 56) & 0xFF),
+        }.ToByteString());
+    }
+    public static string ToByteString(this byte[] input)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        foreach (byte c in input)
+        {
+            sb.Append(c.ToString("X2")); // Converts each character to its hex representation
+            sb.Append(' ');
+        }
+
+        return sb.ToString();
+    }
+    public static string ToByteString(this string input)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        foreach (char c in input)
+        {
+            sb.Append(((byte)c).ToString("X2")); // Converts each character to its hex representation
+            sb.Append(' ');
+        }
+
+        return sb.ToString();
+    }
+
+    public static string ToByteString(this byte b)
+    {
+        return b.ToString("X2")+" "; // Single byte to hex
     }
 }

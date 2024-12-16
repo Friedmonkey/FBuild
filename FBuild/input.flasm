@@ -1,5 +1,8 @@
-﻿declare msg = "number 20:",20;
-push msg
+﻿declare input;
+//declare bs = "fefegrghfdag";
+
+push @"hello world"
 syscall print
+
 push 0
 exit

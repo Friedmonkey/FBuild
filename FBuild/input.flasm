@@ -1,8 +1,19 @@
-﻿declare input;
-//declare bs = "fefegrghfdag";
+﻿//push 88
+//push 50
+//push 19
+//math sub
+//math inc
+//exit
 
-push @"hello world"
-syscall print
+//embed 0x00 //kms
+math 0x00  //kms
+push 00
 
-push 0
 exit
+
+//:loop_start
+//push @"hello world"
+//syscall print
+//jump loop_start
+//:loop_end
+//exit

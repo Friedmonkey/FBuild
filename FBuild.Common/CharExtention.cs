@@ -1,17 +1,28 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace FBuild.Common;
 
 public static class CharExtention
 {
+    public static bool IfContainsThenAddBytesArray(this List<string> strings, string name, ref List<byte> bytes)
+    {
+        var varName = name.ToUpper();
+        if (strings.Contains(varName))
+        {
+            bytes.AddRange(strings.IndexOf(varName).ToByteArrayWithNegative());
+            return true;
+        }
+        return false;
+    }
     public static bool IsEnter(this char character)
     {
         return character is '\n' or '\r';
     }
     public static bool IsVarible(this char character)
     {
-        return char.IsLetter(character) || character == '_';
+        return char.IsLetter(character) || character == '_' || char.IsDigit(character);
     }
     public static bool IsHexDigit(this char chr)
     {

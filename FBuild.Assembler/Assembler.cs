@@ -4,10 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using static FBuild.Assembler.AssemblerDefinitions;
 
 namespace FBuild.Assembler;
 
-public class FriedAssembler : AnalizerBase<char>
+public partial class FriedAssembler : AnalizerBase<char>
 {
     private string CurrentlyConsuming = "start"; // Tell the consumer what we are consuming so we can use it to form a detailed exception
     private string ExtraConsumingInfo = "start"; // Any other information that can be usefull to form a more specific exception
@@ -16,52 +17,6 @@ public class FriedAssembler : AnalizerBase<char>
     {
         this.logger = logger;
     }
-    //private IReadOnlyList<InstructionDefinition> Instruction_definitions = new List<InstructionDefinition>();
-    static byte opcode_index = 0;
-    static KeyValuePair<string, InstructionDefinition> OP(string name, byte argcount)
-    {
-        return new KeyValuePair<string, InstructionDefinition>(name, new InstructionDefinition(name, opcode_index++, argcount));
-    }
-    private IReadOnlyDictionary<string, InstructionDefinition> Instruction_definitions = new Dictionary<string, InstructionDefinition>(new[]
-    {
-        OP("PUSH", 1),
-        OP("POP", 0),
-        OP("DUP", 0),
-        OP("VAR", 2),
-        OP("GET_VAR", 1),
-        OP("POP_VAR", 1),
-        OP("PSH_VAR", 1),
-        OP("MOV_VAR", 2),
-        OP("DEL", 1),
-        OP("ADD", 0),
-        OP("SUB", 0),
-        OP("MUL", 0),
-        OP("DIV", 0),
-        OP("AND", 0),
-        OP("OR", 0),
-        OP("NOT", 0),
-        OP("EQ", 0),
-        OP("NEQ", 0),
-        OP("GT", 0),
-        OP("GTEQ", 0),
-        OP("LT", 0),
-        OP("LTEQ", 0),
-        OP("JMP", 1),
-        OP("JMP_IF", 1),
-        OP("CALL", 1),
-        OP("CALL_IF", 1),
-        OP("RET", 0),
-        OP("SYSCALL", 1),
-        OP("EXIT", 0),
-    });
-    private List<string> syscalls = new List<string>() 
-    {
-        "PAUSE",
-        "CLEAR",
-        "READ",
-        "PRINT",
-        "DUMP",
-    };
     private Dictionary<string, UInt64> Labels = new Dictionary<string, UInt64>();
     private List<Declare> Declares = new List<Declare>();
     private List<Instruction> Instructions = new List<Instruction>();
@@ -345,11 +300,12 @@ public class FriedAssembler : AnalizerBase<char>
                     bytes.AddRange(Declares.IndexOf(declare).ToByteArrayWithNegative());
                     address = varName;
                 }
-                else if (syscalls.Contains(varName.ToUpper()))
-                {
-                    //address = varName; //maby im not sure
-                    bytes.AddRange(syscalls.IndexOf(varName.ToUpper()).ToByteArrayWithNegative());
-                }
+                else if (syscalls.IfContainsThenAddBytesArray(varName, ref bytes))
+                    continue;
+                else if (math_modes.IfContainsThenAddBytesArray(varName, ref bytes))
+                    continue;
+                else if (compare_modes.IfContainsThenAddBytesArray(varName, ref bytes))
+                    continue;
                 else if (Labels.ContainsKey(varName))
                 {
 #warning should this be address or no?
@@ -383,6 +339,8 @@ public class FriedAssembler : AnalizerBase<char>
         if (Labels.ContainsKey(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} label with name \"{name}\" already exists!");
         if (Instruction_definitions.ContainsKey(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} instruction with name \"{name}\" already exists!");
         if (syscalls.Contains(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} syscall with name \"{name}\" already exists!");
+        if (math_modes.Contains(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} math_mode with name \"{name}\" already exists!");
+        if (compare_modes.Contains(name)) throw new Exception($"Error parsing: {CurrentlyConsuming} compare_mode with name \"{name}\" already exists!");
     }
     public string ParseAndResolveLabelAndInstructionAddresses(string input)
     {
@@ -413,6 +371,10 @@ public class FriedAssembler : AnalizerBase<char>
         while (Safe)
         {
             SkipWhitespace();
+            if (Find("//"))
+            {
+                ConsumeComment();
+            }
             if (Current == ':') //label addresses
             {
                 Consume(':');
@@ -442,66 +404,67 @@ public class FriedAssembler : AnalizerBase<char>
                     Position++;
                 }
 
-
-                if (Instruction_definitions.TryGetValue(instructionName, out InstructionDefinition def))
+                bool isValid = Instruction_definitions.TryGetValue(instructionName, out InstructionDefinition def);
+                if (!isValid)
                 {
-                    byte arg_size = 1;
-                    bool isAddr = false;
+                    throw new Exception($"The instruction {instructionName} was not recognized as valid, and doest exist!");
+                }
+                byte arg_size = 1;
+                bool isAddr = false;
 
-                    List<byte> bytes = new List<byte>();
-                    string arguments = string.Empty;
-                    for (int i = 0; i < def.paramCount; i++)
+                List<byte> bytes = new List<byte>();
+                string arguments = string.Empty;
+                for (int i = 0; i < def.paramCount; i++)
+                {
+                    var arg_bytes = ParseBytes(out string addr);
+                    if (autoDeclare)
                     {
-                        var arg_bytes = ParseBytes(out string addr);
-                        if (autoDeclare)
+                        string generatedName = $"_{autoGeneratedDeclares}";
+                        int index = AddDeclare(new Declare(generatedName, arg_bytes.ToArray()));
+                        byte[] index_bytes = index.ToByteArrayWithNegative();
+                        bytes.AddRange(index_bytes);
+                        foreach (byte bite in index_bytes)
                         {
-                            string generatedName = $"_{autoGeneratedDeclares}";
-                            int index = AddDeclare(new Declare(generatedName, arg_bytes.ToArray()));
-                            byte[] index_bytes = index.ToByteArrayWithNegative();
-                            bytes.AddRange(index_bytes);
-                            foreach (byte bite in index_bytes)
-                            {
-                                arguments += bite.ToString("X2") + " ";
-                            }
-                            isAddr |= true;
-                            continue;
+                            arguments += bite.ToString("X2") + " ";
                         }
-                        isAddr |= (!string.IsNullOrEmpty(addr));
-                        if (arg_bytes.Count() > 4)
-                        {
-                            //maby auto generate declaration for this
-                            throw new Exception($"Error {ExtraConsumingInfo} Arguments with size greather than 4 is not supported! But argument number {i} got {arg_bytes.Count()} bytes!, prefix the array with '@' to auto declare this array");
-                        }
-                        if (arg_bytes.Count() > arg_size)
-                            arg_size = (byte)arg_bytes.Count();
+                        isAddr |= true;
+                        continue;
+                    }
+                    isAddr |= (!string.IsNullOrEmpty(addr));
+                    if (arg_bytes.Count() > 4)
+                    {
+                        //maby auto generate declaration for this
+                        throw new Exception($"Error {ExtraConsumingInfo} Arguments with size greather than 4 is not supported! But argument number {i} got {arg_bytes.Count()} bytes!, prefix the array with '@' to auto declare this array");
+                    }
+                    if (arg_bytes.Count() > arg_size)
+                        arg_size = (byte)arg_bytes.Count();
 
 #warning this may be not great
-                        if (string.IsNullOrEmpty(addr) || arg_bytes.Count() != 0)
+                    if (string.IsNullOrEmpty(addr) || arg_bytes.Count() != 0)
+                    {
+                        foreach (byte bite in arg_bytes)
                         {
-                            foreach (byte bite in arg_bytes)
-                            {
-                                arguments += bite.ToString("X2") + " ";
-                            }
+                            arguments += bite.ToString("X2") + " ";
                         }
-                        else
-                        { 
-                            arguments += addr + " "; //embed into the string to be replaced later
-                        }
-                        bytes.AddRange(arg_bytes);
                     }
-                    //if (forceImmidiate != null)
-                    //{ 
-                    //    isAddr = (bool)forceImmidiate;
-                    //}
-
-                    var instruction = new Instruction(def, arg_size, !isAddr, bytes.ToArray());
-                    Instructions.Add(instruction);
-                    address_offset += 1; //the byte for the opcode
-                    address_offset += (UInt64)def.paramCount * (UInt64)arg_size; //the amount of parameters
-
-                    FinalText += instruction.GetByte().ToString("X2")+" ";
-                    FinalText += arguments;
+                    else
+                    {
+                        arguments += addr + " "; //embed into the string to be replaced later
+                    }
+                    bytes.AddRange(arg_bytes);
                 }
+                //if (forceImmidiate != null)
+                //{ 
+                //    isAddr = (bool)forceImmidiate;
+                //}
+
+                var instruction = new Instruction(def, arg_size, !isAddr, bytes.ToArray());
+                Instructions.Add(instruction);
+                address_offset += 1; //the byte for the opcode
+                address_offset += (UInt64)def.paramCount * (UInt64)arg_size; //the amount of parameters
+
+                FinalText += instruction.GetByte().ToString("X2") + " ";
+                FinalText += arguments;
             }
         }
         return FinalText;
@@ -634,9 +597,7 @@ public class FriedAssembler : AnalizerBase<char>
         {
             if (FindStart("//"))
             {
-                var comment = ConsumeUntilEnter();
-                logger?.LogDetail("Comment removed:"+comment);
-                SkipWhitespace();
+                ConsumeComment();
             }
             else
             {
@@ -646,9 +607,18 @@ public class FriedAssembler : AnalizerBase<char>
         }
         return FinalText;
     }
-
+    private void ConsumeComment()
+    {
+        var comment = ConsumeUntilEnter();
+        logger?.LogDetail("Comment removed:" + comment);
+        SkipWhitespace();
+    }
     private string ConsumeIdentifier()
     {
+        if (!Current.IsVarible())
+        {
+            throw new Exception($"Error trying to parse an identifier, got \'{Current}\' instead!");
+        }
         string varName = string.Empty;
         while (Safe && Current.IsVarible())
         {

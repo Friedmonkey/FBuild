@@ -29,7 +29,7 @@ public class AssemblerDefinitions
         OP("VAR",       1),
         OP("POP_TO_VAR",1),
         OP("VAR_MOV",   2),
-        OP("VAR_PUSH",  1),
+        OP("VAR_PUSH",  2),
         OP("VAR_POP",   1),
         OP("STRUCT_SET",2),
         OP("STRUCT_GET",2),

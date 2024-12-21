@@ -8,7 +8,7 @@ public static class CharExtention
 {
     public static bool IfContainsThenAddBytesArray(this List<string> strings, string name, ref List<byte> bytes)
     {
-        var varName = name.ToUpper();
+        string varName = name.ToUpper();
         if (strings.Contains(varName))
         {
             bytes.AddRange(strings.IndexOf(varName).ToByteArrayWithNegative());

@@ -5,10 +5,22 @@
 //math inc
 //exit
 
-//embed 0x00 //kms
-math 0x00  //kms
-push 00
+push @"hello world, enter your name:",0x0D, 0x0A,"Name:"
+syscall print
 
+var buffer
+push buffer
+syscall read
+
+
+push @0x0D,0x0A,"your name is:"
+syscall print
+
+push buffer
+syscall print
+
+
+push 0
 exit
 
 //:loop_start

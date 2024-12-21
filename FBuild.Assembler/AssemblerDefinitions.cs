@@ -13,12 +13,6 @@ public class AssemblerDefinitions
         OP("PUSH",      1),
         OP("POP",       0),
         OP("DUP",       0),
-        OP("VAR",       2),
-        OP("GET_VAR",   1),
-        OP("POP_VAR",   1),
-        OP("PSH_VAR",   1),
-        OP("MOV_VAR",   2),
-        OP("DEL",       1),
         OP("MATH",      1),
         OP("AND",       0),
         OP("OR",        0),
@@ -31,6 +25,14 @@ public class AssemblerDefinitions
         OP("RET",       0),
         OP("SYSCALL",   1),
         OP("EXIT",      0),
+
+        OP("VAR",       1),
+        OP("POP_TO_VAR",1),
+        OP("VAR_MOV",   2),
+        OP("VAR_PUSH",  1),
+        OP("VAR_POP",   1),
+        OP("STRUCT_SET",2),
+        OP("STRUCT_GET",2),
     });
     public static List<string> syscalls = new List<string>()
     {

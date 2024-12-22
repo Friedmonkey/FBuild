@@ -26,13 +26,13 @@ public class AssemblerDefinitions
         OP("SYSCALL",   1),
         OP("EXIT",      0),
 
-        OP("VAR",       1),
-        OP("POP_TO_VAR",1),
-        OP("VAR_MOV",   2),
-        OP("VAR_PUSH",  2),
-        OP("VAR_POP",   1),
-        OP("STRUCT_SET",2),
-        OP("STRUCT_GET",2),
+        OP("SET_BUFFER",	1),
+        OP("GET_BUFFER",	1),
+        OP("PUSH_BUFFER",	1),
+        OP("BUFFER_UTIL",   1),
+        OP("SET_VAR",       0),
+        OP("STRUCT_SET",    2),
+        OP("STRUCT_GET",    2),
     });
     public static List<string> syscalls = new List<string>()
     {
@@ -62,5 +62,13 @@ public class AssemblerDefinitions
         "LTE",
         "EQ",
         "NEQ",
+    };
+    public static List<string> buffer_modes = new List<string>()
+    {
+        "CLEAR",
+        "POP_TO_STACK",
+        "PUSH_FROM_STACK",
+        "REMOVE_FROM_END",
+        "POP_AND_CLEAR",
     };
 }

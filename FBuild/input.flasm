@@ -1,31 +1,15 @@
-﻿//push 88
-//push 50
-//push 19
-//math sub
-//math inc
-//exit
+﻿declare name;
+declare age;
 
-push @"hello world, enter your name:",0x0D, 0x0A,"Name:"
-syscall print
-
-var buffer
-push buffer
+push name
 syscall read
 
-
-push @0x0D,0x0A,"your name is:"
-syscall print
-
-push buffer
+push @"your name was:"
 syscall print
 
 
-push 0
+push name
+syscall print
+
+push age
 exit
-
-//:loop_start
-//push @"hello world"
-//syscall print
-//jump loop_start
-//:loop_end
-//exit

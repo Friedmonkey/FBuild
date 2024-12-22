@@ -2,14 +2,60 @@
 declare age;
 
 push name
-syscall read
+push "name"
+call capture_and_display
 
-push @"your name was:"
-syscall print
-
-
-push name
+push @0x0D,0x0A,"now "
 syscall print
 
 push age
+push "age"
+call capture_and_display
+
+push 0
 exit
+
+declare buffer;
+declare string;
+
+:capture_and_display
+dup 1
+dup 1
+call capture
+call display
+ret
+
+:capture
+push string
+set_var
+
+buffer_util clear
+push_buffer @"enter your "
+push_buffer string
+push_buffer ':',0x0D, 0x0A
+push_buffer string
+push_buffer ':'
+get_buffer buffer
+
+push buffer
+syscall print
+
+syscall read
+ret
+
+:display
+push string
+set_var
+
+buffer_util clear
+push_buffer "your"
+push_buffer ' '
+push_buffer string
+push_buffer ' '
+push_buffer "was:"
+buffer_util push_from_stack
+get_buffer buffer
+
+push buffer
+syscall print
+ret

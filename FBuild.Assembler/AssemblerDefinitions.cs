@@ -3,6 +3,20 @@
 namespace FBuild.Assembler;
 public class AssemblerDefinitions
 {
+#if DEBUG
+    static AssemblerDefinitions() //static warning about reused names
+    {
+        Dictionary<string,int> strings = new Dictionary<string,int>();
+        foreach (string item in syscalls)
+            strings.Add(item.ToUpper(),0);
+        foreach (string item in math_modes)
+            strings.Add(item.ToUpper(),0);
+        foreach (string item in compare_modes)
+            strings.Add(item.ToUpper(),0);
+        foreach (string item in buffer_modes)
+            strings.Add(item.ToUpper(),0);
+    }
+#endif
     private static byte opcode_index = 0;
     private static KeyValuePair<string, InstructionDefinition> OP(string name, byte argcount)
     {
@@ -12,7 +26,7 @@ public class AssemblerDefinitions
     {
         OP("PUSH",      1),
         OP("POP",       0),
-        OP("DUP",       0),
+        OP("DUP",       1),
         OP("MATH",      1),
         OP("AND",       0),
         OP("OR",        0),
@@ -37,7 +51,7 @@ public class AssemblerDefinitions
     public static List<string> syscalls = new List<string>()
     {
         "PAUSE",
-        "CLEAR",
+        "CLEAR_CONSOLE",
         "READ",
         "PRINT",
         "DUMP",

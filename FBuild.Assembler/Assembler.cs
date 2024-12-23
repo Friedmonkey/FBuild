@@ -19,6 +19,7 @@ public partial class FriedAssembler : AnalizerBase<char>
     }
     private Dictionary<string, UInt64> Labels = new Dictionary<string, UInt64>();
     private List<Declare> Declares = new List<Declare>();
+    private List<Struct> Structs = new List<Struct>();
     private int declare_size = 0;
     private List<Instruction> Instructions = new List<Instruction>();
     //private List<string> VarIdentifiers = new List<string>();
@@ -315,11 +316,29 @@ public partial class FriedAssembler : AnalizerBase<char>
                 ExtraConsumingInfo = $"varName: {varName}";
 
                 var declare = Declares.FirstOrDefault(d => d.name == varName);
+                var struc = Structs.FirstOrDefault(d => d.name == varName);
                 if (declare is not null)
                 {
                     declare.used = true;
-                    //bytes.AddRange(Declares.IndexOf(declare).ToByteArrayWithNegative());
                     address = varName;
+                }
+                else if (struc is not null)
+                {
+                    if (Current is '.')
+                    {
+                        Consume('.');
+                        var field = ConsumeIdentifier();
+                        var idx = struc.fields.FindIndex(f => f.name == field);
+                        if (idx == -1)
+                            throw new Exception($"Struct {varName} does not contain field:{field}.");
+                        bytes.AddRange(idx.ToByteArrayWithNegative());
+                    }
+                    else
+                    {
+                        struc.used = true;
+                        //bytes.AddRange(Declares.IndexOf(declare).ToByteArrayWithNegative());
+                        address = varName;
+                    }
                 }
                 else if (syscalls.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
                     continue;
@@ -347,6 +366,11 @@ public partial class FriedAssembler : AnalizerBase<char>
                 else
                 {
                     throw new Exception($"Identifier:{varName} not found, its not a label nor a declared varible or var, nor syscall,math_mode nor compare_mode");
+                }
+                if (Current is '.')
+                {
+                    var field = ConsumeIdentifier();
+                    throw new Exception($"Unable to index into field:{field} on {varName} because {varName} was not a struct!");
                 }
             }
             else
@@ -555,6 +579,62 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         while (Safe)
         {
+            if (FindStart("declare_struct "))
+            {
+
+                string structDeclareName = ConsumeIdentifier();
+                ExtraConsumingInfo = $"structDeclareName: {structDeclareName}";
+
+                CheckName(structDeclareName);
+                Struct struc = new Struct(structDeclareName);
+                SkipWhitespace();
+                Consume('{');
+                SkipWhitespace();
+                while (Safe && Find("field"))
+                {
+                    const string valid = "1234*";
+                    SkipWhitespace();
+                    string fieldName = ConsumeIdentifier();
+                    ExtraConsumingInfo = $"structDeclareName: {structDeclareName} fieldName: {fieldName}";
+                    StructField field = new StructField(fieldName);
+                    SkipWhitespace();
+                    Consume(':');
+                    SkipWhitespace();
+                    var idx = valid.IndexOf(Current);
+                    if (idx == -1)
+                        throw new Exception($"Unknown value type for struct field '{Current}' {ExtraConsumingInfo}");
+                    else
+                    {
+                        field.size = idx+1;
+                        field.immidiate = true;
+                        field.inital_value = new byte[field.size];
+                        field.address = null;
+                        if (Current is '*')
+                            field.immidiate = false; //field size for pointers will get changed later
+                    }
+                    SkipWhitespace();
+                    if (Current == '=')
+                    {
+                        Consume('=');
+                        SkipWhitespace();
+                        List<byte> bytes = ParseBytes(out string addr);
+                        if (bytes.Count != field.size)
+                            throw new Exception($"Error on {CurrentlyConsuming} {ExtraConsumingInfo} bytes used for field ({bytes.Count} does not match bytes declared for field ({field.size})");
+                        if (!string.IsNullOrEmpty(addr))
+                            field.address = addr;
+                        Consume(';');
+                    }
+                    else if (Current == ';')
+                        Consume(';');
+                    else
+                        throw new Exception($"unexpected char in struct declare definition, expected either '=' or ';' but got '{Current}'");
+                    struc.fields.Add(field);
+                    SkipWhitespace();
+                }
+                Consume('}');
+                Consume(';');
+                Structs.Add(struc);
+            }
             if (FindStart("declare "))
             {
                 string declareName = ConsumeIdentifier();

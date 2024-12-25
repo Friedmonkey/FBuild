@@ -96,6 +96,7 @@ internal class Program
             string text = File.ReadAllText(inputFile);
             var bytes = assembler.Parse(text);
             logger.Refresh(LogType.Info | LogType.Warning | LogType.Error | LogType.Detail);
+            Console.ResetColor();
             File.WriteAllBytes(@"C:\Users\marti\source\repos\FriedVM\assembled.fxe", bytes);
             // Call assembler logic here
         }

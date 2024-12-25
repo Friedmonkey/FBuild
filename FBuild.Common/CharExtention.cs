@@ -61,27 +61,61 @@ public static class CharExtention
         return Size.Eight; // Fits in 8 bytes (0-18,446,744,073,709,551,615)
     }
 
-    public static byte[] ToByteArrayWithNegative(this int number)
+    public static byte[] ToByteArrayUnsigned(this uint number)
     {
-        // 1 byte: Range -128 to 127
-        if (number >= sbyte.MinValue && number <= sbyte.MaxValue)
+        // 1 byte: Range 0 to 255
+        if (number <= byte.MaxValue)
             return new byte[] { (byte)(number & 0xFF) };
 
-        // 2 bytes: Range -32,768 to 32,767
-        if (number >= short.MinValue && number <= short.MaxValue)
+        // 2 bytes: Range 0 to 65,535
+        if (number <= ushort.MaxValue)
             return new byte[] { (byte)(number & 0xFF), (byte)((number >> 8) & 0xFF) };
 
-        // 3 bytes: Range -8,388,608 to 8,388,607
-        if (number >= -0x800000 && number <= 0x7FFFFF)
+        // 3 bytes: Range 0 to 16,777,215
+        if (number <= 0xFFFFFF)
             return new byte[] { (byte)(number & 0xFF), (byte)((number >> 8) & 0xFF), (byte)((number >> 16) & 0xFF) };
 
-        // 4 bytes: Range -2,147,483,648 to 2,147,483,647
+        // 4 bytes: Range 0 to 4,294,967,295
         return new byte[] {
             (byte)(number & 0xFF),
             (byte)((number >> 8) & 0xFF),
             (byte)((number >> 16) & 0xFF),
             (byte)((number >> 24) & 0xFF)
         };
+    }
+
+    public static byte[] ToByteArrayWithNegative(this int number)
+    {
+        // Always represent negative numbers as 4 bytes
+        if (number < 0)
+        {
+            return new byte[] {
+            (byte)(number & 0xFF),
+            (byte)((number >> 8) & 0xFF),
+            (byte)((number >> 16) & 0xFF),
+            (byte)((number >> 24) & 0xFF)
+        };
+        }
+
+        // 1 byte: Range 0 to 127
+        if (number <= byte.MaxValue)
+            return new byte[] { (byte)(number & 0xFF) };
+
+        // 2 bytes: Range 0 to 32,767
+        if (number <= ushort.MaxValue)
+            return new byte[] { (byte)(number & 0xFF), (byte)((number >> 8) & 0xFF) };
+
+        // 3 bytes: Range 0 to 8,388,607
+        if (number <= 0x7FFFFF)
+            return new byte[] { (byte)(number & 0xFF), (byte)((number >> 8) & 0xFF), (byte)((number >> 16) & 0xFF) };
+
+        // 4 bytes: Range 0 to 2,147,483,647
+        return new byte[] {
+        (byte)(number & 0xFF),
+        (byte)((number >> 8) & 0xFF),
+        (byte)((number >> 16) & 0xFF),
+        (byte)((number >> 24) & 0xFF)
+    };
     }
     public static string ToFixedByteArray(this UInt64 number, int byteCount)
     {

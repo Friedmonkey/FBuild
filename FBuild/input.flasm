@@ -1,61 +1,22 @@
-﻿declare name;
-declare age;
+﻿declare_struct Point3
+{
+	field x :1 = 100;
+	field y :1 = 127;
+	//field pointer :* = nullptr;
+};
 
-push name
-push "name"
-call capture_and_display
+declare point;
 
-push @0x0D,0x0A,"now "
-syscall print
+push_buffer &Point3 //pad address with zero, this is terrible
+push_buffer 0
+push_buffer 0
+push_buffer 0
 
-push age
-push "age"
-call capture_and_display
+push_buffer 10
+push_buffer 20
+get_buffer point
 
-push 0
+get_struct point Point3.x
+get_struct point Point3.y
+math add
 exit
-
-declare buffer;
-declare string;
-
-:capture_and_display
-dup 1
-dup 1
-call capture
-call display
-ret
-
-:capture
-push string
-set_var
-
-buffer_util clear
-push_buffer @"enter your "
-push_buffer string
-push_buffer ':',0x0D, 0x0A
-push_buffer string
-push_buffer ':'
-get_buffer buffer
-
-push buffer
-syscall print
-
-syscall read
-ret
-
-:display
-push string
-set_var
-
-buffer_util clear
-push_buffer "your"
-push_buffer ' '
-push_buffer string
-push_buffer ' '
-push_buffer "was:"
-buffer_util push_from_stack
-get_buffer buffer
-
-push buffer
-syscall print
-ret

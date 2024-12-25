@@ -45,8 +45,8 @@ public class AssemblerDefinitions
         OP("PUSH_BUFFER",	1),
         OP("BUFFER_UTIL",   1),
         OP("SET_VAR",       0),
-        OP("STRUCT_SET",    2),
-        OP("STRUCT_GET",    2),
+        OP("SET_STRUCT",    2),
+        OP("GET_STRUCT",    2),
     });
     public static List<string> syscalls = new List<string>()
     {

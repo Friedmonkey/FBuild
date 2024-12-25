@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace FBuild.Assembler;
 
@@ -11,11 +13,22 @@ public class Struct
         this.name = name;
     }
     public string name;
-    public List<StructField> fields;
+    public List<StructField> fields = new();
     public bool used = false;
     public Declare MakeDeclare()
     { 
-        return new Declare(name);
+        int count = fields.Count;
+        if (count > byte.MaxValue) throw new Exception("Too many fields");
+
+        List<byte> bytes = new();
+        bytes.Add(0xFF);
+        bytes.Add((byte)count);
+        bytes.AddRange(fields.Select(f => (byte)f.size));
+        foreach (StructField f in fields)
+        {
+            bytes.AddRange(f.inital_value);
+        }
+        return new Declare(name, bytes.ToArray()) { used = this.used };
     }
 }
 

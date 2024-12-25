@@ -53,6 +53,9 @@ public partial class FriedAssembler : AnalizerBase<char>
         input = ParseInstructions(input, out UInt64 address_offset);
         UpdateAndReset();
 
+        Declares.AddRange(Structs.Select(s => s.MakeDeclare()));
+        foreach (string dec in Declares.Where(d => !d.used).Select(d => d.name))
+            logger?.LogInfo($"Declare \"{dec}\" was removed because it wasnt used!");
         Declares = Declares.Where(d => d.used).OrderBy(d => d.value.Count() == 0).ToList();
         declare_size = Declares.FindIndex(d => d.value.Count() == 0); //where empty varibles start
         if (declare_size == -1) declare_size = Declares.Count();
@@ -217,7 +220,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         }
         do
         {
-            SkipWhitespace();
+            SkipWhitespaceAndComments();
             if (Current == '"') //string
             {
                 string str = ConsumeString();
@@ -270,6 +273,28 @@ public partial class FriedAssembler : AnalizerBase<char>
                 bytes.Add(result);
                 address = string.Empty;
             }
+            else if (Current is '-')
+            {
+                Consume('-');
+                if (char.IsDigit(Current)) //signed negative number
+                {
+                    string numberText = "-";
+
+                    while (char.IsDigit(Current))
+                    {
+                        numberText += Current;
+                        Position++;
+                    }
+
+                    //convert string to integer
+                    if (!int.TryParse(numberText, out int number))
+                        throw new FormatException($"Invalid number format: {numberText}");
+
+                    // make bytes
+                    bytes.AddRange(number.ToByteArrayWithNegative());
+                }
+                else throw new Exception($"unexpected character trying to parse signed number {CurrentlyConsuming} {ExtraConsumingInfo}");
+            }
             else if (char.IsDigit(Current)) //normal numbers
             {
                 string numberText = "";
@@ -281,11 +306,11 @@ public partial class FriedAssembler : AnalizerBase<char>
                 }
 
                 //convert string to integer
-                if (!int.TryParse(numberText, out int number))
+                if (!uint.TryParse(numberText, out uint number))
                     throw new FormatException($"Invalid number format: {numberText}");
 
                 // make bytes
-                bytes.AddRange(number.ToByteArrayWithNegative());
+                bytes.AddRange(number.ToByteArrayUnsigned());
             }
             else if (Current is '#' or '&')
             {
@@ -295,19 +320,37 @@ public partial class FriedAssembler : AnalizerBase<char>
                 ExtraConsumingInfo = $"varName: {varName}";
 
                 var declare = Declares.FirstOrDefault(d => d.name == varName);
-                if (declare is null)
-                    throw new Exception($"Identifier:{varName} not found as declare.");
+                var struc = Structs.FirstOrDefault(s => s.name == varName);
+                if (declare is null && struc is null)
+                    throw new Exception($"Identifier:{varName} not found as declare or struct.");
 
-                if (specialLookup is '#') //raw value, embed if possible
-                {   //if its embedded, the value is copied and therefore not included twice in final binary
-                    if (declare.value.Count() == 0)
-                        throw new Exception($"Cant embed uninitialized declare \"{declare.name}\"");
-                    bytes.AddRange(declare.value);
+                if (declare is not null)
+                {
+                    if (specialLookup is '#') //raw value, embed if possible
+                    {   //if its embedded, the value is copied and therefore not included twice in final binary
+                        if (declare.value.Count() == 0)
+                            throw new Exception($"Cant embed uninitialized declare \"{declare.name}\"");
+                        bytes.AddRange(declare.value);
+                    }
+                    else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
+                    {   // we set the address with &, so its marked as immidate
+                        declare.used = true;
+                        address = '&' + varName;
+                    }
                 }
-                else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
-                {   // we wont set the address, so its marked as immidate
-                    declare.used = true;
-                    bytes.AddRange(Declares.IndexOf(declare).ToByteArrayWithNegative());
+                else if (struc is not null)
+                {
+                    if (specialLookup is '#') //raw value, embed if possible
+                    {   //if its embedded, the value is copied and therefore not included twice in final binary
+                        if (struc.fields.Count() == 0)
+                            throw new Exception($"Cant embed uninitialized struct \"{struc.name}\"");
+                        bytes.AddRange(struc.MakeDeclare().value);
+                    }
+                    else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
+                    {   // we set the address with &, so its marked as immidate
+                        struc.used = true;
+                        address = '&' + varName;
+                    }
                 }
             }
             else if (Current.IsVarible()) //either label/address or meta/varible/declare
@@ -336,7 +379,6 @@ public partial class FriedAssembler : AnalizerBase<char>
                     else
                     {
                         struc.used = true;
-                        //bytes.AddRange(Declares.IndexOf(declare).ToByteArrayWithNegative());
                         address = varName;
                     }
                 }
@@ -377,7 +419,7 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 throw new Exception($"Unexpected \"{Current}\" while parsing bytes, expected either a number(1) or byte(0xFF) or binary(0b00001111) or char('H') or string(\"hello\") or address of sorts");
             }
-            SkipWhitespace();
+            SkipWhitespaceAndComments();
         }
         while (Safe && IfConsume(','));
 
@@ -438,7 +480,7 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 buffer += bite.ToString("X2") + " ";
             }
-            FinalText = FinalText.Replace(Declares[i].name, buffer);
+            FinalText = FinalText.Replace(Declares[i].name+' ', buffer); //append space so var1 doest replace var12
         }
 
         return FinalText;
@@ -451,11 +493,8 @@ public partial class FriedAssembler : AnalizerBase<char>
         string FinalText = string.Empty;
         while (Safe)
         {
-            SkipWhitespace();
-            if (Find("//"))
-            {
-                ConsumeComment();
-            }
+            SkipWhitespaceAndComments();
+            if (!Safe) continue;
             if (Current == ':') //label addresses
             {
                 Consume(':');
@@ -475,7 +514,7 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 string instructionName = ConsumeIdentifier();
                 instructionName = instructionName.ToUpper();
-                SkipWhitespace();
+                SkipWhitespaceAndComments();
                 ExtraConsumingInfo = $"instructionName: {instructionName}";
 
                 //bool autoDeclare = false;
@@ -498,19 +537,6 @@ public partial class FriedAssembler : AnalizerBase<char>
                 for (int i = 0; i < def.paramCount; i++)
                 {
                     var arg_bytes = ParseBytes(out string addr);
-                    //if (autoDeclare)
-                    //{
-                    //    string generatedName = $"_{autoGeneratedDeclares}";
-                    //    int index = AddDeclare(new Declare(generatedName, arg_bytes.ToArray()));
-                    //    byte[] index_bytes = index.ToByteArrayWithNegative();
-                    //    bytes.AddRange(index_bytes);
-                    //    foreach (byte bite in index_bytes)
-                    //    {
-                    //        arguments += bite.ToString("X2") + " ";
-                    //    }
-                    //    isAddr |= true;
-                    //    continue;
-                    //}
                     isAddr |= (!string.IsNullOrEmpty(addr));
                     if (arg_bytes.Count() > 4)
                     {
@@ -521,7 +547,12 @@ public partial class FriedAssembler : AnalizerBase<char>
                         arg_size = (byte)arg_bytes.Count();
 
 #warning this may be not great
-                    if (string.IsNullOrEmpty(addr) || arg_bytes.Count() != 0)
+                    if (addr.StartsWith('&')) //we want address as value
+                    { 
+                        isAddr = false;
+                        arguments += addr.Substring(1) + " "; //embed into the string to be replaced later
+                    }
+                    else if (string.IsNullOrEmpty(addr) || arg_bytes.Count() != 0)
                     {
                         foreach (byte bite in arg_bytes)
                         {
@@ -581,25 +612,24 @@ public partial class FriedAssembler : AnalizerBase<char>
         {
             if (FindStart("declare_struct "))
             {
-
                 string structDeclareName = ConsumeIdentifier();
                 ExtraConsumingInfo = $"structDeclareName: {structDeclareName}";
 
                 CheckName(structDeclareName);
                 Struct struc = new Struct(structDeclareName);
-                SkipWhitespace();
+                SkipWhitespaceAndComments();
                 Consume('{');
-                SkipWhitespace();
+                SkipWhitespaceAndComments();
                 while (Safe && Find("field"))
                 {
                     const string valid = "1234*";
-                    SkipWhitespace();
+                    SkipWhitespaceAndComments();
                     string fieldName = ConsumeIdentifier();
                     ExtraConsumingInfo = $"structDeclareName: {structDeclareName} fieldName: {fieldName}";
                     StructField field = new StructField(fieldName);
-                    SkipWhitespace();
+                    SkipWhitespaceAndComments();
                     Consume(':');
-                    SkipWhitespace();
+                    SkipWhitespaceAndComments();
                     var idx = valid.IndexOf(Current);
                     if (idx == -1)
                         throw new Exception($"Unknown value type for struct field '{Current}' {ExtraConsumingInfo}");
@@ -611,15 +641,17 @@ public partial class FriedAssembler : AnalizerBase<char>
                         field.address = null;
                         if (Current is '*')
                             field.immidiate = false; //field size for pointers will get changed later
+                        Position++;
                     }
-                    SkipWhitespace();
+                    SkipWhitespaceAndComments();
                     if (Current == '=')
                     {
                         Consume('=');
-                        SkipWhitespace();
+                        SkipWhitespaceAndComments();
                         List<byte> bytes = ParseBytes(out string addr);
                         if (bytes.Count != field.size)
                             throw new Exception($"Error on {CurrentlyConsuming} {ExtraConsumingInfo} bytes used for field ({bytes.Count} does not match bytes declared for field ({field.size})");
+                        field.inital_value = bytes.ToArray();
                         if (!string.IsNullOrEmpty(addr))
                             field.address = addr;
                         Consume(';');
@@ -629,7 +661,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                     else
                         throw new Exception($"unexpected char in struct declare definition, expected either '=' or ';' but got '{Current}'");
                     struc.fields.Add(field);
-                    SkipWhitespace();
+                    SkipWhitespaceAndComments();
                 }
                 Consume('}');
                 Consume(';');
@@ -641,12 +673,12 @@ public partial class FriedAssembler : AnalizerBase<char>
                 ExtraConsumingInfo = $"declareName: {declareName}";
 
                 CheckName(declareName);
-                SkipWhitespace();
+                SkipWhitespaceAndComments();
 
                 if (Current == '=')
                 {
                     Consume('=');
-                    SkipWhitespace();
+                    SkipWhitespaceAndComments();
                     List<byte> bytes = ParseBytes(out _);
                     Consume(';');
                     AddDeclare(new Declare(declareName, bytes.ToArray()));
@@ -852,6 +884,15 @@ public partial class FriedAssembler : AnalizerBase<char>
         }
         Position += find.Length;
         return true;
+    }
+    public void SkipWhitespaceAndComments()
+    {
+        SkipWhitespace();
+        if (Find("//"))
+        {
+            ConsumeComment();
+            SkipWhitespaceAndComments();
+        }
     }
     public void SkipWhitespace()
     {

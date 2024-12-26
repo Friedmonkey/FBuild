@@ -1,22 +1,47 @@
-﻿declare_struct Point3
-{
-	field x :1 = 100;
-	field y :1 = 127;
-	//field pointer :* = nullptr;
-};
+﻿declare endl = 0x0D,0x0A;
+declare name;
+declare age;
 
-declare point;
 
-push_buffer &Point3 //pad address with zero, this is terrible
-push_buffer 0
-push_buffer 0
-push_buffer 0
+:start
+push @"Hello world, enter your name", #endl, "name:"
+syscall print
 
-push_buffer 10
-push_buffer 20
-get_buffer point
+push name
+syscall read
 
-get_struct point Point3.x
-get_struct point Point3.y
-math add
+push @#endl,"now enter your age", #endl, "age:"
+syscall print
+
+push age
+syscall read
+
+
+
+
+set_buffer @"Hello %s, your age is %u is that correct? Enter YES/NO", #endl, "Answer:"
+buffer_util format
+
+declare result;
+get_buffer result
+
+:retry
+push result
+syscall print
+
+declare response;
+push response
+syscall read
+jump_if "NO" start
+jump_if "YES" success
+
+push @"enter valid thingy, dumbass!"
+syscall print
+jump retry
+exit
+
+:success
+push @"thats great to hear, Bye!"
+syscall print
+push 0
 exit

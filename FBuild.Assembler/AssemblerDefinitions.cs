@@ -84,6 +84,6 @@ public class AssemblerDefinitions
         "POP_TO_STACK",
         "PUSH_FROM_STACK",
         "REMOVE_FROM_END",
-        "POP_AND_CLEAR",
+        "FORMAT",
     };
 }

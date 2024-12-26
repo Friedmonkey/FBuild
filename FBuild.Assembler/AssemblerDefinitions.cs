@@ -47,6 +47,7 @@ public class AssemblerDefinitions
         OP("SET_VAR",       0),
         OP("SET_STRUCT",    2),
         OP("GET_STRUCT",    2),
+        OP("CREATE_STRUCT", 2),
     });
     public static List<string> syscalls = new List<string>()
     {

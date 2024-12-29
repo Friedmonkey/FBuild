@@ -28,7 +28,7 @@ public class Struct
         {
             bytes.AddRange(f.inital_value);
         }
-        return new Declare(name, bytes.ToArray()) { used = this.used };
+        return new Declare(name, bytes.ToArray()) { used = this.used};
     }
 }
 

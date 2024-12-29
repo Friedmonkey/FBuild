@@ -1,9 +1,11 @@
 ﻿using FBuild.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Xml.Schema;
 using static FBuild.Assembler.AssemblerDefinitions;
 
 namespace FBuild.Assembler;
@@ -118,7 +120,7 @@ public partial class FriedAssembler : AnalizerBase<char>
     }
     private string FinalGenerator(string instructions, UInt64 instructions_offset, Size meta, bool includeSymbols, byte version)
     {
-        const string emptyVarSizeHeader = "%emptyVarSizeHeader%";
+        const string emptyVarCountHeader = "%emptyVarCountHeader%";
         const string instructionHeader = "%instructionHeader%";
         const string constPoolHeader = "%constPoolHeader%";
         const string symbolHeader = "%symbolHeader%";
@@ -133,7 +135,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         sb.Append("FXE".ToByteString()); // Converts "FXE" to hex (e.g., "46 58 45")
         sb.Append(versionByteTemp);
         byteCount += 4;//magic
-        sb.Append(emptyVarSizeHeader);
+        sb.Append(emptyVarCountHeader);
         byteCount += 0; //calculate later
         sb.Append(instructionHeader);
         byteCount += 0; //calculate later
@@ -180,7 +182,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         //calculate the bytes needed for header size
         int numHeaders = includeSymbols ? 3 : 2;
         UInt64 largestHeader = includeSymbols ? symbolHeaderPos : constPoolHeaderPos;
-        largestHeader += (UInt64)(numHeaders*8) + 8; //go off the largest
+        largestHeader += (UInt64)(numHeaders*8); //go off the largest
 
         Size bytesNeeded = largestHeader.GetAmountOfBytesNeeded();
         byte header_size = GetSize(bytesNeeded);
@@ -198,7 +200,7 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         finalText = finalText.Replace(versionByteTemp, versionByte.ToByteString()); //replace the version byte
 
-        finalText = finalText.Replace(emptyVarSizeHeader, emptyVarCount.ToFixedByteArray(emptyVar_size));
+        finalText = finalText.Replace(emptyVarCountHeader, emptyVarCount.ToFixedByteArray(emptyVar_size));
 
         finalText = finalText.Replace(instructionHeader, instructionHeaderPos.ToFixedByteArray(header_size));
         finalText = finalText.Replace(constPoolHeader, constPoolHeaderPos.ToFixedByteArray(header_size));
@@ -208,9 +210,10 @@ public partial class FriedAssembler : AnalizerBase<char>
         return finalText;
     }
 
-    public List<byte> ParseBytes(out string address)
+    public List<byte> ParseBytes(out string address, out bool isReference, ref byte min_arg_size)
     {
         address = string.Empty;
+        isReference = false;
         List<byte> bytes = new List<byte>();
         bool autoDeclare = false;
         if (Current == '@')
@@ -225,12 +228,14 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 string str = ConsumeString();
                 foreach (byte b in str) bytes.Add(b);
+                isReference = false;
                 address = string.Empty;
             }
             else if (Current == '\'') //char
             {
                 char chr = ConsumeChar();
                 bytes.Add((byte)chr);
+                isReference = false;
                 address = string.Empty;
             }
             else if (Current == '0' && Peek(1) is 'x' or 'X') //byte 0xFF (only parse 2 hex to make up the byte)
@@ -251,6 +256,7 @@ public partial class FriedAssembler : AnalizerBase<char>
 
                 byte result = Convert.ToByte(hexText, 16); // Convert hex string to byte
                 bytes.Add(result);
+                isReference = false;
                 address = string.Empty;
             }
             else if (Current == '0' && Peek(1) is 'b' or 'B') //binary 0b00001111 (only parse 8 (0 or 1) to make up the byte)
@@ -271,6 +277,7 @@ public partial class FriedAssembler : AnalizerBase<char>
 
                 byte result = Convert.ToByte(binaryText, 2); // Convert binary to byte
                 bytes.Add(result);
+                isReference = false;
                 address = string.Empty;
             }
             else if (Current is '-')
@@ -292,6 +299,8 @@ public partial class FriedAssembler : AnalizerBase<char>
 
                     // make bytes
                     bytes.AddRange(number.ToByteArrayWithNegative());
+                    isReference = false;
+                    address = string.Empty;
                 }
                 else throw new Exception($"unexpected character trying to parse signed number {CurrentlyConsuming} {ExtraConsumingInfo}");
             }
@@ -311,9 +320,12 @@ public partial class FriedAssembler : AnalizerBase<char>
 
                 // make bytes
                 bytes.AddRange(number.ToByteArrayUnsigned());
+                isReference = false;
+                address = string.Empty;
             }
-            else if (Current is '#' or '&')
+            else if (Current is '#')// or '&')
             {
+                //throw new Exception("not updated yet");
                 char specialLookup = Current;
                 Position++;
                 string varName = ConsumeIdentifier();
@@ -331,12 +343,14 @@ public partial class FriedAssembler : AnalizerBase<char>
                         if (declare.value.Count() == 0)
                             throw new Exception($"Cant embed uninitialized declare \"{declare.name}\"");
                         bytes.AddRange(declare.value);
+                        isReference = false;
                     }
-                    else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
-                    {   // we set the address with &, so its marked as immidate
-                        declare.used = true;
-                        address = '&' + varName;
-                    }
+                    //else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
+                    //{   // we set the address with &, so its marked as immidate
+                    //    declare.used = true;
+                    //    address = varName;
+                    //    isReference = false;
+                    //}
                 }
                 else if (struc is not null)
                 {
@@ -345,12 +359,14 @@ public partial class FriedAssembler : AnalizerBase<char>
                         if (struc.fields.Count() == 0)
                             throw new Exception($"Cant embed uninitialized struct \"{struc.name}\"");
                         bytes.AddRange(struc.MakeDeclare().value);
+                        isReference = false;
                     }
-                    else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
-                    {   // we set the address with &, so its marked as immidate
-                        struc.used = true;
-                        address = '&' + varName;
-                    }
+                    //else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
+                    //{   // we set the address with &, so its marked as immidate
+                    //    struc.used = true;
+                    //    address = varName;
+                    //    isReference = false;
+                    //}
                 }
             }
             else if (Current.IsVarible()) //either label/address or meta/varible/declare
@@ -362,7 +378,12 @@ public partial class FriedAssembler : AnalizerBase<char>
                 var struc = Structs.FirstOrDefault(d => d.name == varName);
                 if (declare is not null)
                 {
+                    byte size = GetSize(((UInt64)Declares.IndexOf(declare)).GetAmountOfBytesNeeded());
+                    if (size > min_arg_size)
+                        min_arg_size = size;
+
                     declare.used = true;
+                    isReference = true;
                     address = varName;
                 }
                 else if (struc is not null)
@@ -378,7 +399,12 @@ public partial class FriedAssembler : AnalizerBase<char>
                     }
                     else
                     {
+                        byte size = GetSize(((UInt64)(Declares.Count() + Structs.IndexOf(struc))).GetAmountOfBytesNeeded());
+                        if (size > min_arg_size)
+                            min_arg_size = size;
+
                         struc.used = true;
+                        isReference = true;
                         address = varName;
                     }
                 }
@@ -390,20 +416,25 @@ public partial class FriedAssembler : AnalizerBase<char>
                     continue;
                 else if (buffer_modes.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
                     continue;
-                //else if (VarIdentifiers.Contains(varName))
-                //{
-                //    address = varName; //we cant be certain about its index just yet,
-                //                       //so dont add bytes but mark as address so it can get embeded and replaced later
-                //}
                 else if (Labels.ContainsKey(varName))
                 {
-#warning should this be address or no?
-                    //address = varName; //maby im not sure
                     var addr = Labels[varName];
                     if (addr == UInt64.MaxValue)
+                    {
+                        min_arg_size = 4; //labels we dont know just take up 4 bytes
+                        isReference = true;
                         address = varName;
+                    }
                     else
-                        bytes.AddRange(((int)addr).ToByteArrayWithNegative());
+                    {
+                        var newBytes = ((int)addr).ToByteArrayWithNegative();
+                        if (newBytes.Count() > min_arg_size)
+                            min_arg_size = (byte)newBytes.Count();
+
+                        bytes.AddRange(newBytes);
+                        isReference = false;
+                        address = string.Empty;
+                    }
                 }
                 else
                 {
@@ -428,10 +459,15 @@ public partial class FriedAssembler : AnalizerBase<char>
             if (bytes.Count() <= 4)
                 logger?.LogWarning("Declaring array within 4 bytes is not needed");
             string generatedName = $"_{autoGeneratedDeclares++}";
-            int index = AddDeclare(new Declare(generatedName, bytes.ToArray()) { used = true });
-            bytes.Clear();
-            //bytes.AddRange(index.ToByteArrayWithNegative());
+            int index = AddDeclare(new Declare(generatedName, bytes.ToArray()) { used = true});
 
+            byte size = GetSize(((UInt64)index).GetAmountOfBytesNeeded());
+            if (size > min_arg_size)
+                min_arg_size = size;
+            bytes.Clear();
+            bytes.AddRange(((UInt32)index).ToByteArrayUnsigned());
+
+            isReference = true;
             address = generatedName;
         }
 
@@ -461,29 +497,42 @@ public partial class FriedAssembler : AnalizerBase<char>
         var label_keys = Labels.Keys.ToArray();
         for (int i = 0; i < Labels.Count; i++)
         {
-            var byte_arr = ((int)Labels[label_keys[i]]).ToByteArrayWithNegative();
-            string buffer = string.Empty;
-            foreach (byte bite in byte_arr)
-            {
-                buffer += bite.ToString("X2") + " ";
-            }
-            FinalText = FinalText.Replace(label_keys[i], buffer);
+            string varible = $"{label_keys[i]}:4";
+            if (!FinalText.Contains(varible))
+                continue;
+            var address = ((UInt64)Labels[label_keys[i]]).ToAnyFixedByteArray(4);
+            FinalText = FinalText.Replace(varible, address);
         }
 
+
         //resolve all varibles and declares
-        
         for (int i = 0; i < Declares.Count(); i++) //this is for resolving, we do all, even empty
         {
-            var index = i.ToByteArrayWithNegative(); 
-            string buffer = string.Empty;
-            foreach (byte bite in index)
+            for (byte size = 1; size <= 4; size++)
             {
-                buffer += bite.ToString("X2") + " ";
+                string varible = $"{Declares[i].name}:{size}";
+                if (!FinalText.Contains(varible))
+                    continue;
+                var index = ((UInt64)i).ToAnyFixedByteArray(size); 
+                FinalText = FinalText.Replace(varible, index); //append space so var1 doest replace var12
             }
-            FinalText = FinalText.Replace(Declares[i].name+' ', buffer); //append space so var1 doest replace var12
         }
 
         return FinalText;
+    }
+
+    [DebuggerDisplay("{reff} {str} - {arg_size}")]
+    class Arg
+    {
+        public Arg(string addr, bool reff, byte arg_size)
+        {
+            this.str = addr;
+            this.reff = reff;
+            this.arg_size = arg_size;
+        }
+        public string str { get; set; }
+        public bool reff { get; set; }
+        public byte arg_size { get; set; }
     }
     public string ParseInstructions(string input, out UInt64 address_offset)
     {
@@ -517,66 +566,75 @@ public partial class FriedAssembler : AnalizerBase<char>
                 SkipWhitespaceAndComments();
                 ExtraConsumingInfo = $"instructionName: {instructionName}";
 
-                //bool autoDeclare = false;
-                //if (Current == '@') //auto declare this array
-                //{
-                //    autoDeclare = true;
-                //    Position++;
-                //}
-
                 bool isValid = Instruction_definitions.TryGetValue(instructionName, out InstructionDefinition def);
                 if (!isValid)
                 {
                     throw new Exception($"The instruction {instructionName} was not recognized as valid, and doest exist!");
                 }
-                byte arg_size = 1;
+                byte min_arg_size = 1;
                 bool isAddr = false;
-
-                List<byte> bytes = new List<byte>();
-                string arguments = string.Empty;
+                List<Arg> arguments = new List<Arg>();
                 for (int i = 0; i < def.paramCount; i++)
                 {
-                    var arg_bytes = ParseBytes(out string addr);
-                    isAddr |= (!string.IsNullOrEmpty(addr));
+                    var arg_bytes = ParseBytes(out string addr, out bool isReference, ref min_arg_size);
+                    isAddr |= isReference;
                     if (arg_bytes.Count() > 4)
-                    {
-                        //maby auto generate declaration for this
                         throw new Exception($"Error {ExtraConsumingInfo} Arguments with size greather than 4 is not supported! But argument number {i} got {arg_bytes.Count()} bytes!, prefix the array with '@' to auto declare this array");
-                    }
-                    if (arg_bytes.Count() > arg_size)
-                        arg_size = (byte)arg_bytes.Count();
+                    
+                    if (arg_bytes.Count() > min_arg_size)
+                        min_arg_size = (byte)arg_bytes.Count();
 
-#warning this may be not great
-                    if (addr.StartsWith('&')) //we want address as value
-                    { 
-                        isAddr = false;
-                        arguments += addr.Substring(1) + " "; //embed into the string to be replaced later
-                    }
-                    else if (string.IsNullOrEmpty(addr) || arg_bytes.Count() != 0)
+                    string arg_string = string.Empty;
+
+                    if (isReference)
                     {
-                        foreach (byte bite in arg_bytes)
-                        {
-                            arguments += bite.ToString("X2") + " ";
-                        }
+                        if (string.IsNullOrEmpty(addr))
+                            throw new Exception("should not happen");
+                        else
+                            arg_string += addr + " "; //embed into the string to be replaced later
                     }
                     else
                     {
-                        arguments += addr + " "; //embed into the string to be replaced later
+                        foreach (byte bite in arg_bytes)
+                        {
+                            arg_string += bite.ToString("X2") + " ";
+                        }
                     }
-                    bytes.AddRange(arg_bytes);
-                }
-                //if (forceImmidiate != null)
-                //{ 
-                //    isAddr = (bool)forceImmidiate;
-                //}
+#warning this may be not great
 
-                var instruction = new Instruction(def, arg_size, !isAddr, bytes.ToArray());
+                    arguments.Add(new Arg(arg_string, isReference, (byte)arg_bytes.Count()));
+                }
+
+                //make sure all arguments are same size
+                for (int i = 0; i < arguments.Count(); i++)
+                {
+                    string byteString = arguments[i].str;
+                    bool isReference = arguments[i].reff;
+                    byte size = arguments[i].arg_size;
+
+                    if (isReference)
+                    {
+                        arguments[i].str = $"{byteString.Trim()}:{min_arg_size} ";
+                    }
+                    else if (min_arg_size > size) //if we need padding, otherwise its fine
+                    {
+                        int padcount = (min_arg_size - size);
+                        string padding = string.Empty;
+                        for (int j = 0; j < padcount; j++) 
+                        {
+                            padding += "00 ";
+                        }
+                        arguments[i].str += padding;
+                    }
+                }
+
+                var instruction = new Instruction(def, min_arg_size, !isAddr);
                 Instructions.Add(instruction);
                 address_offset += 1; //the byte for the opcode
-                address_offset += (UInt64)def.paramCount * (UInt64)arg_size; //the amount of parameters
+                address_offset += (UInt64)def.paramCount * (UInt64)min_arg_size; //the amount of parameters
 
                 FinalText += instruction.GetByte().ToString("X2") + " ";
-                FinalText += arguments;
+                FinalText += string.Join(' ', arguments.Select(a => a.str));
             }
         }
         return FinalText;
@@ -648,7 +706,8 @@ public partial class FriedAssembler : AnalizerBase<char>
                     {
                         Consume('=');
                         SkipWhitespaceAndComments();
-                        List<byte> bytes = ParseBytes(out string addr);
+                        byte b=0;
+                        List<byte> bytes = ParseBytes(out string addr, out bool isReference, ref b);
                         if (bytes.Count != field.size)
                             throw new Exception($"Error on {CurrentlyConsuming} {ExtraConsumingInfo} bytes used for field ({bytes.Count} does not match bytes declared for field ({field.size})");
                         field.inital_value = bytes.ToArray();
@@ -679,7 +738,8 @@ public partial class FriedAssembler : AnalizerBase<char>
                 {
                     Consume('=');
                     SkipWhitespaceAndComments();
-                    List<byte> bytes = ParseBytes(out _);
+                    byte b=0;
+                    List<byte> bytes = ParseBytes(out _, out _, ref b);
                     Consume(';');
                     AddDeclare(new Declare(declareName, bytes.ToArray()));
                 }

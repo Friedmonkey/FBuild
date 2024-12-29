@@ -56,6 +56,10 @@ public class AssemblerDefinitions
         "READ",
         "PRINT",
         "DUMP",
+        "TO_STRING_UNSIGNED",
+        "TO_STRING_SIGNED",
+        "TO_NUMBER_UNSIGNED",
+        "TO_NUMBER_SIGNED",
     };
     public static List<string> math_modes = new List<string>()
     {

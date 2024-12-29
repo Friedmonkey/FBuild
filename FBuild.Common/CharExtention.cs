@@ -140,6 +140,30 @@ public static class CharExtention
 
         return result.ToByteString();
     }
+    public static string ToAnyFixedByteArray(this UInt64 number, int byteCount)
+    {
+        // Ensure byteCount is valid
+        if (byteCount < 1 || byteCount > 4)
+            throw new ArgumentException("Byte count must be 1, 2, 3, or 4.", nameof(byteCount));
+
+        // Check if the number fits within the specified size
+        UInt64 maxValue = (1UL << (byteCount * 8)) - 1; // Calculate max value for the byte size
+        if (number > maxValue)
+            throw new ArgumentOutOfRangeException(nameof(number),
+                $"Value {number} is too large to fit in {byteCount} byte(s).");
+
+        // Allocate a fixed-size byte array
+        byte[] result = new byte[byteCount];
+
+        // Fill the byte array with the value (little-endian)
+        for (int i = 0; i < byteCount; i++)
+        {
+            result[i] = (byte)((number >> (8 * i)) & 0xFF);
+        }
+
+        return result.ToByteString();
+    }
+
     public static string ToByteString(this UInt32 number)
     {
         // 4 bytes: Range 0 to 4,294,967,295

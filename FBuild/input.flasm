@@ -2,24 +2,26 @@
 declare name;
 declare age;
 
-
-:start
 push @"Hello world, enter your name", #endl, "name:"
+jump start
+:restart
+push @"Dang that sucks, lets retry this again, by entering your name!", #endl, "name:"
+:start
 syscall print
 
 push name
 syscall read
 
-push @#endl,"now enter your age", #endl, "age:"
+push @#endl,"now enter your age!", #endl, "age:"
 syscall print
 
 push age
 syscall read
 
 
-
-
-set_buffer @"Hello %s, your age is %u is that correct? Enter YES/NO", #endl, "Answer:"
+push age
+push name
+set_buffer @"Hello %s, your age is %s is that correct? Enter YES/NO", #endl, "Answer:"
 buffer_util format
 
 declare result;
@@ -32,10 +34,12 @@ syscall print
 declare response;
 push response
 syscall read
-jump_if "NO" start
-jump_if "YES" success
 
-push @"enter valid thingy, dumbass!"
+push response
+jump_if @"NO" restart
+jump_if @"YES" success
+
+push @"enter valid thingy, dumbass!", #endl
 syscall print
 jump retry
 exit

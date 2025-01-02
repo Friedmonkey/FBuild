@@ -423,7 +423,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                     {
                         min_arg_size = 4; //labels we dont know just take up 4 bytes
                         isReference = true;
-                        address = varName;
+                        address = '&'+varName; //tell byte parser to ignore the reference and mark as imidate but still lookup address
                     }
                     else
                     {
@@ -577,7 +577,14 @@ public partial class FriedAssembler : AnalizerBase<char>
                 for (int i = 0; i < def.paramCount; i++)
                 {
                     var arg_bytes = ParseBytes(out string addr, out bool isReference, ref min_arg_size);
-                    isAddr |= isReference;
+                    if (addr.StartsWith('&')) //for labels we dont know yet
+                    { 
+                        addr = addr.Substring(1);
+                    }
+                    else
+                    {
+                        isAddr |= isReference;
+                    }
                     if (arg_bytes.Count() > 4)
                         throw new Exception($"Error {ExtraConsumingInfo} Arguments with size greather than 4 is not supported! But argument number {i} got {arg_bytes.Count()} bytes!, prefix the array with '@' to auto declare this array");
                     

@@ -33,9 +33,9 @@ public class AssemblerDefinitions
         OP("NOT",       0),
         OP("COMP",      1),
         OP("JUMP",      1),
-        OP("JUMP_IF",   2),
+        OP("JUMP_IF",   1),
         OP("CALL",      1),
-        OP("CALL_IF",   2),
+        OP("CALL_IF",   1),
         OP("RET",       0),
         OP("SYSCALL",   1),
         OP("EXIT",      0),
@@ -48,6 +48,8 @@ public class AssemblerDefinitions
         OP("SET_STRUCT",    2),
         OP("GET_STRUCT",    2),
         OP("CREATE_STRUCT", 2),
+
+        OP("CHECK_STACK", 1),
     });
     public static List<string> syscalls = new List<string>()
     {

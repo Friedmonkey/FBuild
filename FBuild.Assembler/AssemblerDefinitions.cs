@@ -74,6 +74,7 @@ public class AssemblerDefinitions
         "POW",
         "ROOT",
         "SQRT",
+        "RAND",
     };
     public static List<string> compare_modes = new List<string>()
     {

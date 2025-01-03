@@ -1,51 +1,97 @@
-﻿declare endl = 0x0D,0x0A;
-declare name;
-declare age;
+﻿// Declare necessary values
+declare min = 1;
+declare max = 100;
+declare guess;
+declare random_number;
+declare output;  // Declare the output variable
+declare endl = 0x0D,0x0A;  // Define newline bytes
 
-push @"Hello world, enter your name", #endl, "name:"
-jump start
-:restart
-push @"Dang that sucks, lets retry this again, by entering your name!", #endl, "name:"
+// Declare the base part of the welcome message (without min/max)
+declare welcome_msg = "Welcome to the random number guessing game!", #endl, "I am thinking of a number between %u and %u. Can you guess what it is?", #endl;
+
+// Set the message using the min and max values
+set_buffer welcome_msg
+push max
+push min
+buffer_util format  // Format the string by inserting min and max
+get_buffer welcome_msg
+
+// Print the updated welcome message
+push welcome_msg
+syscall print
+
+// Generate a random number between 1 and 100 and store it in random_number
+push min
+push max
+math rand
+push random_number
+set_var
+
 :start
+// Ask for user's guess
+push @"Enter your guess: ", #endl
 syscall print
 
-push name
+// Get user's input for guess
+push guess
 syscall read
 
-push @#endl,"now enter your age!", #endl, "age:"
-syscall print
+// Convert the input to a number
+push guess
+syscall to_number_unsigned
+push guess
+set_var
 
-push age
-syscall read
+// Check if guess is correct using comp eq (which pops both values)
+push guess
+push random_number
+comp eq // Check if values are equal
+jump_if win
 
+// If guess is wrong, determine if it's too high or too low
+push guess
+push random_number
+comp lt  // Compare guess < random_number (i.e., guess is too low)
+jump_if too_low
 
-push age
-push name
-set_buffer @"Hello %s, your age is %s is that correct? Enter YES/NO", #endl, "Answer:"
-buffer_util format
+push guess
+push random_number
+comp gt  // Compare guess > random_number (i.e., guess is too high)
+jump_if too_high
 
-declare result;
-get_buffer result
-
-:retry
-push result
-syscall print
-
-declare response;
-push response
-syscall read
-
-push response
-jump_if @"NO" restart
-jump_if @"YES" success
-
-push @"enter valid thingy, dumbass!", #endl
-syscall print
-jump retry
+// If not too low nor too high nor equal, something has gone to shit
+push -1 //exit with bad error code
 exit
 
-:success
-push @"thats great to hear, Bye!"
+:too_low
+// If the guess was too low, jump to the wrong_retry
+push "low"
+jump wrong_retry
+
+:too_high
+// If the guess was too high, jump to the wrong_retry
+push "high"
+jump wrong_retry
+
+:wrong_retry
+// If the guess was wrong, format the message and ask the user to retry
+set_buffer @"Your guess is too %s! Try again.", #endl
+buffer_util format
+get_buffer output
+push output
 syscall print
-push 0
+jump start
+
+:win
+// If the user guessed correctly
+set_buffer @"You win! The number was %u! Thanks for playing!"  // Declare message with a placeholder for random_number
+
+push random_number  // Push the random_number onto the stack
+buffer_util format  // Format the string with the random number
+get_buffer output  // Get the formatted string
+
+push output  // Push the final formatted string
+syscall print  // Print the message
+
+push 0 // Success exit code
 exit

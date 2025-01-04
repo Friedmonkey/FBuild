@@ -1,97 +1,61 @@
-﻿// Declare necessary values
-declare min = 1;
-declare max = 100;
-declare guess;
-declare random_number;
-declare output;  // Declare the output variable
-declare endl = 0x0D,0x0A;  // Define newline bytes
+﻿#include <input>
 
-// Declare the base part of the welcome message (without min/max)
-declare welcome_msg = "Welcome to the random number guessing game!", #endl, "I am thinking of a number between %u and %u. Can you guess what it is?", #endl;
+declare x = 5;
+declare y = 5;
+declare buffer;
 
-// Set the message using the min and max values
-set_buffer welcome_msg
-push max
-push min
-buffer_util format  // Format the string by inserting min and max
-get_buffer welcome_msg
+:main
+jump game_loop
 
-// Print the updated welcome message
-push welcome_msg
-syscall print
+:game_loop
+call update_input
+call draw
+jump game_loop
 
-// Generate a random number between 1 and 100 and store it in random_number
-push min
-push max
-math rand
-push random_number
-set_var
-
-:start
-// Ask for user's guess
-push @"Enter your guess: ", #endl
-syscall print
-
-// Get user's input for guess
-push guess
-syscall read
-
-// Convert the input to a number
-push guess
-syscall to_number_unsigned
-push guess
-set_var
-
-// Check if guess is correct using comp eq (which pops both values)
-push guess
-push random_number
-comp eq // Check if values are equal
-jump_if win
-
-// If guess is wrong, determine if it's too high or too low
-push guess
-push random_number
-comp lt  // Compare guess < random_number (i.e., guess is too low)
-jump_if too_low
-
-push guess
-push random_number
-comp gt  // Compare guess > random_number (i.e., guess is too high)
-jump_if too_high
-
-// If not too low nor too high nor equal, something has gone to shit
-push -1 //exit with bad error code
-exit
-
-:too_low
-// If the guess was too low, jump to the wrong_retry
-push "low"
-jump wrong_retry
-
-:too_high
-// If the guess was too high, jump to the wrong_retry
-push "high"
-jump wrong_retry
-
-:wrong_retry
-// If the guess was wrong, format the message and ask the user to retry
-set_buffer @"Your guess is too %s! Try again.", #endl
+:draw
+set_buffer @"x:%d y:%d"
 buffer_util format
-get_buffer output
-push output
+get_buffer buffer
+push buffer
 syscall print
-jump start
+ret
 
-:win
-// If the user guessed correctly
-set_buffer @"You win! The number was %u! Thanks for playing!"  // Declare message with a placeholder for random_number
+:update_input
+call lib_input_get
+get_struct input_buffer input_key.a
+jump_if move_left
+get_struct input_buffer input_key.d
+jump_if move_right
+get_struct input_buffer input_key.w
+jump_if move_up
+get_struct input_buffer input_key.s
+jump_if move_down
+ret
 
-push random_number  // Push the random_number onto the stack
-buffer_util format  // Format the string with the random number
-get_buffer output  // Get the formatted string
+:move_left
+push x
+math dec
+push x
+set_var
+ret
 
-push output  // Push the final formatted string
-syscall print  // Print the message
+:move_right
+push x
+math inc
+push x
+set_var
+ret
 
-push 0 // Success exit code
-exit
+:move_up
+push y
+math inc
+push y
+set_var
+ret
+
+:move_down
+push y
+math inc
+push y
+set_var
+ret

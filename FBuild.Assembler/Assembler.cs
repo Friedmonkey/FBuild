@@ -1,10 +1,12 @@
-﻿using FBuild.Common;
+﻿using FBuild.Assembler.Libraries;
+using FBuild.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 using System.Xml.Schema;
 using static FBuild.Assembler.AssemblerDefinitions;
 
@@ -809,7 +811,19 @@ public partial class FriedAssembler : AnalizerBase<char>
                 }
                 else if (Current == '<') //include default libraries
                 {
-                    throw new NotImplementedException("including default libaries is not supported yet");
+                    Consume('<');
+                    string library = ConsumeUntil('>');
+                    ExtraConsumingInfo = library;
+                    Consume('>');
+                    if (Library.TryGetLibrary(library, out string code))
+                    {
+                        logger?.LogInfo($"including library:{library}");
+                        FinalText += code;
+                    }
+                    else
+                    {
+                        throw new Exception($"include failed, Library <{library}> not found!");
+                    }
                 }
                 else
                 {

@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 
 namespace FBuild.Assembler.Libraries;
 
-public class LibInput : Library
+public class LibInput : ILibrary
 {
-    new public string Namespace = "lib_input";
+    public string Namespace { get; init; } = "lib_input";
     /// <summary>
     /// input_buffer, input_key
     /// </summary>
-    new public string Declares = """ 
+    public string Declares { get; init; } = """ 
 	declare input_buffer;
     declare_struct input_key
 	{
@@ -66,10 +66,10 @@ public class LibInput : Library
 		field numpad_9:1 = 0x69;
 	};
 """;
-    new public string Setup = """ 
+    public string Setup { get; init; } = """ 
 	call lib_input_setup
 """;
-    new public string Code = """ 
+    public string Code { get; init; } = """ 
 	:lib_input_setup
 	create_struct input_key input_buffer
 	ret

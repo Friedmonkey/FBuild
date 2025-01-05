@@ -62,6 +62,10 @@ public class AssemblerDefinitions
         "TO_STRING_SIGNED",
         "TO_NUMBER_UNSIGNED",
         "TO_NUMBER_SIGNED",
+
+        "INPUT_MODE_READ",
+        "INPUT_MODE_WRITE",
+        "INPUT_TO_STRUCT",
     };
     public static List<string> math_modes = new List<string>()
     {

@@ -6,16 +6,16 @@ using System.Threading.Tasks;
 
 namespace FBuild.Assembler.Libraries;
 
-public class LibEmpty : Library
+public class LibEmpty : ILibrary
 {
-    new const string Namespace = "lib_empty";
-    new const string Declares = """ 
+    public string Namespace { get; init; } = "lib_empty";
+    public string Declares { get; init; } = """ 
 
 """;
-    new const string Setup = """ 
+    public string Setup { get; init; } = """ 
 	
 """;
-    new const string Code = """ 
+    public string Code { get; init; } = """ 
 	
 """;
 }

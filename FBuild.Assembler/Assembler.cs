@@ -493,17 +493,17 @@ public partial class FriedAssembler : AnalizerBase<char>
     {
         CurrentlyConsuming = "resolving addresses";
 
-        string FinalText = input;
+        string FinalText = $" {input} ";
 
         //resolve labels
         var label_keys = Labels.Keys.ToArray();
         for (int i = 0; i < Labels.Count; i++)
         {
-            string varible = $"{label_keys[i]}:4";
+            string varible = $" {label_keys[i]}:4";
             if (!FinalText.Contains(varible))
                 continue;
             var address = ((UInt64)Labels[label_keys[i]]).ToAnyFixedByteArray(4);
-            FinalText = FinalText.Replace(varible, address);
+            FinalText = FinalText.Replace(varible, ' '+address);
         }
 
 
@@ -512,11 +512,11 @@ public partial class FriedAssembler : AnalizerBase<char>
         {
             for (byte size = 1; size <= 4; size++)
             {
-                string varible = $"{Declares[i].name}:{size}";
+                string varible = $" {Declares[i].name}:{size}";
                 if (!FinalText.Contains(varible))
                     continue;
                 var index = ((UInt64)i).ToAnyFixedByteArray(size); 
-                FinalText = FinalText.Replace(varible, index); //append space so var1 doest replace var12
+                FinalText = FinalText.Replace(varible, ' '+index); //append space so var1 doest replace var12
             }
         }
 
@@ -815,7 +815,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                     string library = ConsumeUntil('>');
                     ExtraConsumingInfo = library;
                     Consume('>');
-                    if (Library.TryGetLibrary(library, out string code))
+                    if (ILibrary.TryGetLibrary(library, out string code))
                     {
                         logger?.LogInfo($"including library:{library}");
                         FinalText += code;

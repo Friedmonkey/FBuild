@@ -5,19 +5,52 @@ declare y = 5;
 declare buffer;
 
 :main
+syscall input_mode_read
 jump game_loop
 
 :game_loop
 call update_input
 call draw
+syscall clear_console
+
+push 100
+syscall pause
+
+push x
+call check_clamp
+
+push y
+call check_clamp
+
 jump game_loop
 
+:check_clamp
+dup 0
+
+push 20
+comp eq
+jump_if end
+
+push -15
+comp eq
+jump_if end
+
+ret
+
+:end
+push 0
+exit
+
 :draw
-set_buffer @"x:%d y:%d"
+syscall input_mode_write
+set_buffer @"x:%d y:%d", 0x0D, 0x0A
+push y
+push x
 buffer_util format
 get_buffer buffer
 push buffer
 syscall print
+syscall input_mode_read
 ret
 
 :update_input
@@ -55,7 +88,7 @@ ret
 
 :move_down
 push y
-math inc
+math dec
 push y
 set_var
 ret

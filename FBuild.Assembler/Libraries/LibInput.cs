@@ -67,12 +67,16 @@ public class LibInput : ILibrary
 	};
 """;
     public string Setup { get; init; } = """ 
+#ifndef lib_input_skip_init
 	call lib_input_setup
+#endif
 """;
     public string Code { get; init; } = """ 
+#ifndef lib_input_skip_init
 	:lib_input_setup
 	create_struct input_key input_buffer
 	ret
+#endif
 
 	:lib_input_get
 	push input_buffer

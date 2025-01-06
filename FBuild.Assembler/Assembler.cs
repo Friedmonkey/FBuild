@@ -21,6 +21,7 @@ public partial class FriedAssembler : AnalizerBase<char>
     {
         this.logger = logger;
     }
+    private Dictionary<string, string> Defines = new Dictionary<string, string>();
     private Dictionary<string, UInt64> Labels = new Dictionary<string, UInt64>();
     private List<Declare> Declares = new List<Declare>();
     private List<Struct> Structs = new List<Struct>();
@@ -46,6 +47,9 @@ public partial class FriedAssembler : AnalizerBase<char>
         UpdateAndReset();
 
         input = ParseIncludes(input);
+        UpdateAndReset();
+
+        input = ParsePreParser(input);
         UpdateAndReset();
 
         input = ParseDeclares(input);
@@ -867,6 +871,65 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 FinalText += Current;
                 Position++;
+            }
+        }
+        return FinalText;
+    }
+    public string ParsePreParser(string input)
+    {
+        CurrentlyConsuming = "preparser";
+
+        string FinalText = string.Empty;
+
+        while (Safe)
+        {
+            if (FindStart("#define "))
+            { 
+                string define = ConsumeIdentifier().ToUpper();
+                string content = string.Empty;
+                if (Current == ' ')
+                {
+                    Consume(' ');
+                    content = ConsumeUntilEnter();
+                }
+                Defines.Add(define, content);
+            }
+            if (FindStart("#ifdef "))
+            {
+                ConsumeDefine(true);
+            }
+            if (FindStart("#ifndef "))
+            {
+                ConsumeDefine(false);
+            }
+            else
+            {
+                FinalText += Current;
+                Position++;
+            }
+            void ConsumeDefine(bool includeCode)
+            {
+                string define = ConsumeIdentifier().ToUpper();
+                if (!Defines.ContainsKey(define))
+                    includeCode = !includeCode;
+
+                while (Safe)
+                {
+                    if (FindStart("#endif"))
+                    {
+                        break;
+                    }
+                    else if (FindStart("#else"))
+                    {
+                        includeCode = !includeCode;
+                    }
+                    else
+                    {
+                        if (includeCode)
+                            FinalText += Current;
+                        Position++;
+                    }
+                }
             }
         }
         return FinalText;

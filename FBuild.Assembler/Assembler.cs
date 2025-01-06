@@ -441,7 +441,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                     {
                         min_arg_size = 4; //labels we dont know just take up 4 bytes
                         isReference = true;
-                        address = '&'+varName; //tell byte parser to ignore the reference and mark as imidate but still lookup address
+                        address = '&' + varName; //tell byte parser to ignore the reference and mark as imidate but still lookup address
                     }
                     else
                     {
@@ -453,6 +453,13 @@ public partial class FriedAssembler : AnalizerBase<char>
                         isReference = false;
                         address = string.Empty;
                     }
+                }
+                else if (Defines.TryGetValue(varName.ToUpper(), out string value))
+                { 
+                    Position -= varName.Length;
+                    this.Analizable.RemoveRange(Position, varName.Length);
+                    this.Analizable.InsertRange(Position, (','+value).ToList()); //little hack to restart add , and continue;
+                    continue;
                 }
                 else
                 {

@@ -71,7 +71,8 @@ public class LibInput : ILibrary
 	call lib_input_setup
 #endif
 """;
-    public string Code { get; init; } = """ 
+    public string Code { get; init; } = """
+	//if we dont include this, it means we never use input_key, meaning we dont embed it, meaning we skip a large struct saving bytes
 #ifndef lib_input_skip_init
 	:lib_input_setup
 	create_struct input_key input_buffer

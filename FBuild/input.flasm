@@ -1,20 +1,28 @@
 ﻿#define lib_input_skip_init
 #include <input>
 
+#define newline 0x0D, 0x0A
+#define keycode #input_key
+
 declare_struct my_input
 {
-	field w:1 = #input_key.w;
-	field a:1 = #input_key.a;
-	field s:1 = #input_key.s;
-	field d:1 = #input_key.d;
+	field w:1 = keycode.w;
+	field a:1 = keycode.a;
+	field s:1 = keycode.s;
+	field d:1 = keycode.d;
 };
 create_struct my_input input_buffer
 
 declare console_x;
 declare console_y;
 
-declare x = 5;
-declare y = 5;
+#define five 0x05
+
+#define max 200
+#define min -200
+
+declare x = five;
+declare y = five;
 declare buffer;
 
 :main
@@ -43,10 +51,10 @@ jump game_loop
 
 :check_clamp
 dup 0
-push 200
+push max
 comp eq
 jump_if end
-push -200
+push min
 comp eq
 jump_if end
 ret
@@ -56,15 +64,13 @@ push 0
 exit
 
 :draw
-//syscall input_mode_write
-set_buffer @"x:%d y:%d        ", 0x0D, 0x0A //need some spaces to overwrite
+set_buffer @"x:%d y:%d        ",newline //need some spaces to overwrite
 push y
 push x
 buffer_util format
 get_buffer buffer
 push buffer
 syscall print
-//syscall input_mode_read
 ret
 
 :update_input

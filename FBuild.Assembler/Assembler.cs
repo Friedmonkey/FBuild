@@ -357,11 +357,23 @@ public partial class FriedAssembler : AnalizerBase<char>
                 else if (struc is not null)
                 {
                     if (specialLookup is '#') //raw value, embed if possible
-                    {   //if its embedded, the value is copied and therefore not included twice in final binary
-                        if (struc.fields.Count() == 0)
-                            throw new Exception($"Cant embed uninitialized struct \"{struc.name}\"");
-                        bytes.AddRange(struc.MakeDeclare().value);
-                        isReference = false;
+                    {
+                        if (Current is '.')
+                        {
+                            Consume('.');
+                            var fieldIdent = ConsumeIdentifier();
+                            StructField field = struc.fields.FirstOrDefault(f => f.name == fieldIdent);
+                            if (field == null)
+                                throw new Exception($"Struct {varName} does not contain field:{field}.");
+                            bytes.AddRange(field.inital_value);
+                        }
+                        else
+                        {
+                            if (struc.fields.Count() == 0)
+                                throw new Exception($"Cant embed uninitialized struct \"{struc.name}\"");
+                            bytes.AddRange(struc.MakeDeclare().value);
+                            isReference = false;
+                        }
                     }
                     //else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
                     //{   // we set the address with &, so its marked as immidate
@@ -444,6 +456,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                 }
                 if (Current is '.')
                 {
+                    Consume('.');
                     var field = ConsumeIdentifier();
                     throw new Exception($"Unable to index into field:{field} on {varName} because {varName} was not a struct!");
                 }

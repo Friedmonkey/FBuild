@@ -66,6 +66,9 @@ public class AssemblerDefinitions
         "INPUT_MODE_READ",
         "INPUT_MODE_WRITE",
         "INPUT_TO_STRUCT",
+
+        "SET_CONSOLE_CURSOR",
+        "GET_CONSOLE_CURSOR",
     };
     public static List<string> math_modes = new List<string>()
     {

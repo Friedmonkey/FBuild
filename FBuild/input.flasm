@@ -1,40 +1,53 @@
 ﻿#include <input>
 
+declare_struct my_input
+{
+	field w:1 = #input_key.w;
+	field a:1 = #input_key.a;
+	field s:1 = #input_key.s;
+	field d:1 = #input_key.d;
+};
+create_struct my_input input_buffer
+
+declare console_x;
+declare console_y;
+
 declare x = 5;
 declare y = 5;
 declare buffer;
 
 :main
+syscall get_console_cursor
+push console_x
+set_var
+push console_y
+set_var
+
 syscall input_mode_read
 jump game_loop
 
 :game_loop
+push console_x
+push console_y
+syscall set_console_cursor
 call update_input
 call draw
-syscall clear_console
-
 push 100
 syscall pause
-
 push x
 call check_clamp
-
 push y
 call check_clamp
-
 jump game_loop
 
 :check_clamp
 dup 0
-
-push 20
+push 200
 comp eq
 jump_if end
-
-push -15
+push -200
 comp eq
 jump_if end
-
 ret
 
 :end
@@ -42,27 +55,27 @@ push 0
 exit
 
 :draw
-syscall input_mode_write
-set_buffer @"x:%d y:%d", 0x0D, 0x0A
+//syscall input_mode_write
+set_buffer @"x:%d y:%d        ", 0x0D, 0x0A //need some spaces to overwrite
 push y
 push x
 buffer_util format
 get_buffer buffer
 push buffer
 syscall print
-syscall input_mode_read
+//syscall input_mode_read
 ret
 
 :update_input
 call lib_input_get
-get_struct input_buffer input_key.a
-jump_if move_left
-get_struct input_buffer input_key.d
-jump_if move_right
-get_struct input_buffer input_key.w
-jump_if move_up
-get_struct input_buffer input_key.s
-jump_if move_down
+get_struct input_buffer my_input.a
+call_if move_left
+get_struct input_buffer my_input.d
+call_if move_right
+get_struct input_buffer my_input.w
+call_if move_up
+get_struct input_buffer my_input.s
+call_if move_down
 ret
 
 :move_left

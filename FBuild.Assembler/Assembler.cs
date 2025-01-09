@@ -458,7 +458,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                 { 
                     Position -= varName.Length;
                     this.Analizable.RemoveRange(Position, varName.Length);
-                    this.Analizable.InsertRange(Position, (','+value).ToList()); //little hack to restart add , and continue;
+                    this.Analizable.InsertRange(Position, (','+value).ToList()); //little hack to restart add, and continue;
                     continue;
                 }
                 else

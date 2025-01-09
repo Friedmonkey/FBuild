@@ -1,114 +1,64 @@
-﻿#define lib_input_skip_init
-#include <input>
+﻿#define newline 0x0D, 0x0A
 
-#define newline 0x0D, 0x0A
-#define keycode #input_key
+push @"Enter the first number:"
+syscall print
 
-declare_struct my_input
-{
-	field w:1 = keycode.w;
-	field a:1 = keycode.a;
-	field s:1 = keycode.s;
-	field d:1 = keycode.d;
-};
-create_struct my_input input_buffer
+declare a;
+push a
+call getNumber
 
-declare console_x;
-declare console_y;
+push @newline, "Enter the second number:"
+syscall print
 
-#define five 0x05
+declare b;
+push b
+call getNumber
 
-#define max 200
-#define min -200
+push @newline, "Now enter an opcode", newline,
+"All avalible opcodes are:", newline,
+"ADD = 0", newline,
+"SUB = 1", newline,
+"MUL = 4", newline,
+"DIV = 5", newline,
+"POW = 6", newline,
+"ROOT = 7", newline,
+"SQRT = 8", newline,
+"RAND = 9", newline,
+"Opcode index:"
 
-declare x = five;
-declare y = five;
-declare buffer;
+syscall print
 
-:main
-syscall get_console_cursor
-push console_x
-set_var
-push console_y
-set_var
+declare index;
+push index
+call getNumber
 
-syscall input_mode_read
-jump game_loop
-
-:game_loop
-push console_x
-push console_y
-syscall set_console_cursor
-call update_input
-call draw
-push 100
-syscall pause
-push x
-call check_clamp
-push y
-call check_clamp
-jump game_loop
-
-:check_clamp
-dup 0
-push max
-comp eq
-jump_if end
-push min
-comp eq
-jump_if end
-ret
-
-:end
-push 0
+push index
 exit
 
-:draw
-set_buffer @"x:%d y:%d        ",newline //need some spaces to overwrite
-push y
-push x
+push a
+push b
+math index
+
+declare output;
+push output
+syscall read
+
+
+set_buffer @"Your number is: %d"
+
+push output
 buffer_util format
-get_buffer buffer
-push buffer
+get_buffer output
+
+push output
 syscall print
-ret
 
-:update_input
-call lib_input_get
-get_struct input_buffer my_input.a
-call_if move_left
-get_struct input_buffer my_input.d
-call_if move_right
-get_struct input_buffer my_input.w
-call_if move_up
-get_struct input_buffer my_input.s
-call_if move_down
-ret
-
-:move_left
-push x
-math dec
-push x
+:getNumber
+dup 0
+dup 0
+syscall read
+syscall to_number_signed
+dup 1
 set_var
-ret
-
-:move_right
-push x
-math inc
-push x
-set_var
-ret
-
-:move_up
-push y
-math inc
-push y
-set_var
-ret
-
-:move_down
-push y
-math dec
-push y
-set_var
+pop
 ret

@@ -32,26 +32,21 @@ declare index;
 push index
 call getNumber
 
-push index
-exit
-
 push a
 push b
 math index
 
-declare output;
-push output
-syscall read
-
-
 set_buffer @"Your number is: %d"
-
-push output
 buffer_util format
+
+declare output;
 get_buffer output
 
 push output
 syscall print
+
+push 0
+exit
 
 :getNumber
 dup 0

@@ -608,8 +608,8 @@ public partial class FriedAssembler : AnalizerBase<char>
                         addr = addr.Substring(1);
                     }
                     else
-                    {
-                        isAddr |= isReference;
+                    {   //last argument decides
+                        isAddr = isReference; 
                     }
                     if (arg_bytes.Count() > 4)
                         throw new Exception($"Error {ExtraConsumingInfo} Arguments with size greather than 4 is not supported! But argument number {i} got {arg_bytes.Count()} bytes!, prefix the array with '@' to auto declare this array");
@@ -633,7 +633,6 @@ public partial class FriedAssembler : AnalizerBase<char>
                             arg_string += bite.ToString("X2") + " ";
                         }
                     }
-#warning this may be not great
 
                     arguments.Add(new Arg(arg_string, isReference, (byte)arg_bytes.Count()));
                 }

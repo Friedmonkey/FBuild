@@ -28,20 +28,22 @@ public class Struct
         {
             bytes.AddRange(f.inital_value);
         }
-        return new Declare(name, bytes.ToArray()) { used = this.used};
+        return new Declare(AssemblerDefinitions.FindType("struct"), name, bytes.ToArray()) { used = this.used};
     }
 }
 
 [DebuggerDisplay("{name}:{value}")]
 public class StructField
 {
-    public StructField(string name)
+    public StructField(Type type, string name)
     {
+        this.type = type;
         this.name = name;
     }
+    public Type type;
     public string name;
-    public int size;
-    public bool immidiate;
     public byte[] inital_value;
-    public string address = null;
+    //public int size;
+    //public bool immidiate;
+    //public string address = null;
 }

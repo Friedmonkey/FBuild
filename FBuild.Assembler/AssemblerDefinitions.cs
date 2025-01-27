@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace FBuild.Assembler;
 public class AssemblerDefinitions
@@ -17,6 +18,49 @@ public class AssemblerDefinitions
             strings.Add(item.ToUpper(),0);
     }
 #endif
+    public static List<Type> Types = new List<Type>()
+    { 
+        new Type("raw",             [0x00]),
+        new Type("string",          [0x01]),
+
+        new Type("uint8",           [0x10], "char",   "byte", "u8"),
+        new Type("uint16",          [0x12], "ushort", "u16"),
+        new Type("uint32",          [0x13], "uint",   "u32"),
+        new Type("uint64",          [0x14], "ulong",  "u64"),
+        new Type("int8",            [0x15], "sbyte",  "i8"),
+        new Type("int16",           [0x16], "short",  "i16"),
+        new Type("int32",           [0x17], "int",    "i32"),
+        new Type("int64",           [0x18], "long",   "i64"),
+        new Type("float32",         [0x19], "float",  "f32"),
+        new Type("float64",         [0x1A], "double", "f64"),
+
+        new Type("complex_type",    [0xFC]),
+        new Type("struct",          [0xFD]),
+        new Type("array",           [0xFE]),
+        new Type("pointer",         [0xFF]),
+    };
+    public static Dictionary<string, string> ShortTypes = new Dictionary<string, string>() 
+    {
+        { "u",  "uint32"},  
+        { "ul", "uint64"}, 
+        //{ "",   "int32"}, //no specifier means int32 by default (but this is context specific)
+        { "l",  "int64"},  
+        { "f",  "float32"},  
+        { "d",  "float64"},  
+    };
+    public static bool TryGetType(string name, out Type type)
+    {
+        type = Types.FirstOrDefault(t => t.name == name || (t.aliases?.Contains(name) ?? false));
+        bool success = (type is not null);
+        return success;
+    }
+    public static Type FindType(string name)
+    {
+        if (TryGetType(name, out Type type))
+            return type;
+        else
+            throw new KeyNotFoundException($"Type:\"{name}\" not found");
+    }
     private static byte opcode_index = 0;
     private static KeyValuePair<string, InstructionDefinition> OP(string name, byte argcount)
     {

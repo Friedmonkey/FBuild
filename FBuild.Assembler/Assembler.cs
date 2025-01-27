@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Xml.Linq;
 using System.Xml.Schema;
@@ -216,103 +217,88 @@ public partial class FriedAssembler : AnalizerBase<char>
         return finalText;
     }
 
-    public List<byte> ParseBytes(out string address, out bool isReference, ref byte min_arg_size)
+    public Declare ParseVarible(Type type = null)
     {
-        address = string.Empty;
-        isReference = false;
+        bool hasType = false;
+        if (type == null)
+            hasType = TryConsumeType(out type);
+        else
+            hasType = true;
+
+        SkipWhitespaceAndComments();
         List<byte> bytes = new List<byte>();
-        bool autoDeclare = false;
-        if (Current == '@')
-        { 
-            autoDeclare = true;
-            Consume('@');
-        }
-        do
+
+        if (Current == '{')
         {
+            TypeCheck("raw");
+            Consume('{');
             SkipWhitespaceAndComments();
-            if (Current == '"') //string
+            var var = ParseVarible(FindType("raw"));
+            SkipWhitespaceAndComments();
+            Consume('}');
+            return var;
+        }
+        else if (Current == '"') //string
+        {
+            TypeCheck("string");
+            string str = ConsumeString();
+            foreach (byte b in str) bytes.Add(b);
+        }
+        else if (Current == '\'') //char
+        {
+            TypeCheck("char");
+            char chr = ConsumeChar();
+            bytes.Add((byte)chr);
+        }
+        else if (Current == '0' && Peek(1) is 'x' or 'X') //byte 0xFF (only parse 2 hex to make up the byte)
+        {
+            throw new NotImplementedException();
+            TypeCheck("byte");
+            Consume('0');
+            Position++; // Consume 'x' or 'X'
+
+            string hexText = "";
+            for (int i = 0; i < 2; i++) // Read exactly 2 characters
             {
-                string str = ConsumeString();
-                foreach (byte b in str) bytes.Add(b);
-                isReference = false;
-                address = string.Empty;
+                char c = Peek(i);
+                if (!c.IsHexDigit()) // Validate if character is in 0-9, A-F, a-f
+                    throw new FormatException($"Invalid hex character: '{c}'");
+
+                hexText += c;
             }
-            else if (Current == '\'') //char
+            Position += 2; // Advance the position by 2
+
+            byte result = Convert.ToByte(hexText, 16); // Convert hex string to byte
+            bytes.Add(result);
+        }
+        else if (Current == '0' && Peek(1) is 'b' or 'B') //binary 0b00001111 (only parse 8 (0 or 1) to make up the byte)
+        {
+            throw new NotImplementedException();
+            TypeCheck("byte");
+            Consume('0');
+            Position++; // Consume 'b' or 'B'
+
+            string binaryText = "";
+            for (int i = 0; i < 8; i++) // Read next 8 characters
             {
-                char chr = ConsumeChar();
-                bytes.Add((byte)chr);
-                isReference = false;
-                address = string.Empty;
+                char c = Peek(i);
+                if (c != '0' && c != '1')
+                    throw new FormatException($"Invalid binary character: '{c}'");
+
+                binaryText += c;
             }
-            else if (Current == '0' && Peek(1) is 'x' or 'X') //byte 0xFF (only parse 2 hex to make up the byte)
+            Position += 8; // Advance position by 8
+
+            byte result = Convert.ToByte(binaryText, 2); // Convert binary to byte
+            bytes.Add(result);
+        }
+        else if (Current is '-')
+        {
+            TypeCheck("int32");
+            Consume('-');
+            if (char.IsDigit(Current)) //signed negative number
             {
-                Consume('0');
-                Position++; // Consume 'x' or 'X'
-
-                string hexText = "";
-                for (int i = 0; i < 2; i++) // Read exactly 2 characters
-                {
-                    char c = Peek(i);
-                    if (!c.IsHexDigit()) // Validate if character is in 0-9, A-F, a-f
-                        throw new FormatException($"Invalid hex character: '{c}'");
-
-                    hexText += c;
-                }
-                Position += 2; // Advance the position by 2
-
-                byte result = Convert.ToByte(hexText, 16); // Convert hex string to byte
-                bytes.Add(result);
-                isReference = false;
-                address = string.Empty;
-            }
-            else if (Current == '0' && Peek(1) is 'b' or 'B') //binary 0b00001111 (only parse 8 (0 or 1) to make up the byte)
-            {
-                Consume('0');
-                Position++; // Consume 'b' or 'B'
-
-                string binaryText = "";
-                for (int i = 0; i < 8; i++) // Read next 8 characters
-                {
-                    char c = Peek(i);
-                    if (c != '0' && c != '1')
-                        throw new FormatException($"Invalid binary character: '{c}'");
-
-                    binaryText += c;
-                }
-                Position += 8; // Advance position by 8
-
-                byte result = Convert.ToByte(binaryText, 2); // Convert binary to byte
-                bytes.Add(result);
-                isReference = false;
-                address = string.Empty;
-            }
-            else if (Current is '-')
-            {
-                Consume('-');
-                if (char.IsDigit(Current)) //signed negative number
-                {
-                    string numberText = "-";
-
-                    while (char.IsDigit(Current))
-                    {
-                        numberText += Current;
-                        Position++;
-                    }
-
-                    //convert string to integer
-                    if (!int.TryParse(numberText, out int number))
-                        throw new FormatException($"Invalid number format: {numberText}");
-
-                    // make bytes
-                    bytes.AddRange(number.ToByteArrayWithNegative());
-                    isReference = false;
-                    address = string.Empty;
-                }
-                else throw new Exception($"unexpected character trying to parse signed number {CurrentlyConsuming} {ExtraConsumingInfo}");
-            }
-            else if (char.IsDigit(Current)) //normal numbers
-            {
-                string numberText = "";
+                string numberText = "-";
 
                 while (char.IsDigit(Current))
                 {
@@ -320,190 +306,370 @@ public partial class FriedAssembler : AnalizerBase<char>
                     Position++;
                 }
 
+                //if (char.IsAsciiLetter(Current))
+                //{
+                //    string shortType = ConsumeIdentifier();
+                //}
+
                 //convert string to integer
-                if (!uint.TryParse(numberText, out uint number))
+                if (!int.TryParse(numberText, out int number))
                     throw new FormatException($"Invalid number format: {numberText}");
 
                 // make bytes
-                bytes.AddRange(number.ToByteArrayUnsigned());
-                isReference = false;
-                address = string.Empty;
+                bytes.AddRange(number.ToByteArrayWithNegative());
             }
-            else if (Current is '#')// or '&')
+            else throw new Exception($"unexpected character trying to parse signed number {CurrentlyConsuming} {ExtraConsumingInfo}");
+        }
+        else if (char.IsDigit(Current)) //normal numbers
+        {
+            TypeCheck("uint32");
+            string numberText = "";
+
+            while (char.IsDigit(Current))
             {
-                //throw new Exception("not updated yet");
-                char specialLookup = Current;
+                numberText += Current;
                 Position++;
-                string varName = ConsumeIdentifier();
-                ExtraConsumingInfo = $"varName: {varName}";
-
-                var declare = Declares.FirstOrDefault(d => d.name == varName);
-                var struc = Structs.FirstOrDefault(s => s.name == varName);
-                if (declare is null && struc is null)
-                    throw new Exception($"Identifier:{varName} not found as declare or struct.");
-
-                if (declare is not null)
-                {
-                    if (specialLookup is '#') //raw value, embed if possible
-                    {   //if its embedded, the value is copied and therefore not included twice in final binary
-                        if (declare.value.Count() == 0)
-                            throw new Exception($"Cant embed uninitialized declare \"{declare.name}\"");
-                        bytes.AddRange(declare.value);
-                        isReference = false;
-                    }
-                    //else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
-                    //{   // we set the address with &, so its marked as immidate
-                    //    declare.used = true;
-                    //    address = varName;
-                    //    isReference = false;
-                    //}
-                }
-                else if (struc is not null)
-                {
-                    if (specialLookup is '#') //raw value, embed if possible
-                    {
-                        if (Current is '.')
-                        {
-                            Consume('.');
-                            var fieldIdent = ConsumeIdentifier();
-                            StructField field = struc.fields.FirstOrDefault(f => f.name == fieldIdent);
-                            if (field == null)
-                                throw new Exception($"Struct {varName} does not contain field:{field}.");
-                            bytes.AddRange(field.inital_value);
-                        }
-                        else
-                        {
-                            if (struc.fields.Count() == 0)
-                                throw new Exception($"Cant embed uninitialized struct \"{struc.name}\"");
-                            bytes.AddRange(struc.MakeDeclare().value);
-                            isReference = false;
-                        }
-                    }
-                    //else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
-                    //{   // we set the address with &, so its marked as immidate
-                    //    struc.used = true;
-                    //    address = varName;
-                    //    isReference = false;
-                    //}
-                }
             }
-            else if (Current.IsVarible()) //either label/address or meta/varible/declare
+
+            //convert string to integer
+            if (!uint.TryParse(numberText, out uint number))
+                throw new FormatException($"Invalid number format: {numberText}");
+
+            // make bytes
+            bytes.AddRange(number.ToByteArrayUnsigned());
+        }
+        if (!hasType)
+            throw new Exception("to type fiven :((((");
+
+        string generatedName = $"_{autoGeneratedDeclares++}";
+        return new Declare(type, generatedName, bytes.ToArray());
+
+        bool InternalTypeCheck(string typename)
+        {
+            Type checkType = FindType(typename); //also checks if its valid type
+            if (hasType)
             {
-                string varName = ConsumeIdentifier();
-                ExtraConsumingInfo = $"varName: {varName}";
-
-                var declare = Declares.FirstOrDefault(d => d.name == varName);
-                var struc = Structs.FirstOrDefault(d => d.name == varName);
-                if (declare is not null)
-                {
-                    byte size = GetSize(((UInt64)Declares.IndexOf(declare)).GetAmountOfBytesNeeded());
-                    if (size > min_arg_size)
-                        min_arg_size = size;
-
-                    declare.used = true;
-                    isReference = true;
-                    address = varName;
-                }
-                else if (struc is not null)
-                {
-                    if (Current is '.')
-                    {
-                        Consume('.');
-                        var field = ConsumeIdentifier();
-                        var idx = struc.fields.FindIndex(f => f.name == field);
-                        if (idx == -1)
-                            throw new Exception($"Struct {varName} does not contain field:{field}.");
-                        bytes.AddRange(idx.ToByteArrayWithNegative());
-                    }
-                    else
-                    {
-                        byte size = GetSize(((UInt64)(Declares.Count() + Structs.IndexOf(struc))).GetAmountOfBytesNeeded());
-                        if (size > min_arg_size)
-                            min_arg_size = size;
-
-                        struc.used = true;
-                        isReference = true;
-                        address = varName;
-                    }
-                }
-                else if (syscalls.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
-                    continue;
-                else if (math_modes.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
-                    continue;
-                else if (compare_modes.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
-                    continue;
-                else if (buffer_modes.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
-                    continue;
-                else if (Labels.ContainsKey(varName))
-                {
-                    var addr = Labels[varName];
-                    if (addr == UInt64.MaxValue)
-                    {
-                        min_arg_size = 4; //labels we dont know just take up 4 bytes
-                        isReference = true;
-                        address = '&' + varName; //tell byte parser to ignore the reference and mark as imidate but still lookup address
-                    }
-                    else
-                    {
-                        var newBytes = ((int)addr).ToByteArrayWithNegative();
-                        if (newBytes.Count() > min_arg_size)
-                            min_arg_size = (byte)newBytes.Count();
-
-                        bytes.AddRange(newBytes);
-                        isReference = false;
-                        address = string.Empty;
-                    }
-                }
-                else if (Defines.TryGetValue(varName.ToUpper(), out string value))
-                { 
-                    Position -= varName.Length;
-                    this.Analizable.RemoveRange(Position, varName.Length);
-                    this.Analizable.InsertRange(Position, (','+value).ToList()); //little hack to restart add, and continue;
-                    continue;
-                }
-                else
-                {
-                    throw new Exception($"Identifier:{varName} not found, its not a label nor a declared varible or var, nor syscall,math_mode nor compare_mode");
-                }
-                if (Current is '.')
-                {
-                    Consume('.');
-                    var field = ConsumeIdentifier();
-                    throw new Exception($"Unable to index into field:{field} on {varName} because {varName} was not a struct!");
-                }
+                if (type.name == "raw") return true;
+                return (checkType.name == type.name);
             }
             else
             {
-                throw new Exception($"Unexpected \"{Current}\" while parsing bytes, expected either a number(1) or byte(0xFF) or binary(0b00001111) or char('H') or string(\"hello\") or address of sorts");
+                type = checkType;
+                hasType = true;
+                return true;
             }
-            SkipWhitespaceAndComments();
         }
-        while (Safe && IfConsume(','));
-
-        if (autoDeclare)
+        void TypeCheck(string typename)
         {
-            if (bytes.Count() <= 4)
-                logger?.LogWarning("Declaring array within 4 bytes is not needed");
-            string generatedName = $"_{autoGeneratedDeclares++}";
-            int index = AddDeclare(new Declare(generatedName, bytes.ToArray()) { used = true});
-
-            byte size = GetSize(((UInt64)index).GetAmountOfBytesNeeded());
-            if (size > min_arg_size)
-                min_arg_size = size;
-            bytes.Clear();
-            bytes.AddRange(((UInt32)index).ToByteArrayUnsigned());
-
-            isReference = true;
-            address = generatedName;
+            if (!InternalTypeCheck(typename))
+                throw new Exception($"Type mismatch, expected \"{type.name}\" but got \"{typename}\" instead!");
         }
+        //void TypeCheck(params string[] typenames)
+        //{
+        //    string lastTypename;
+        //    foreach (string typename in typenames) 
+        //    {
+        //        lastTypename = typename;
+        //        if (InternalTypeCheck(typename))
+        //            return;
+        //    }
 
-        return bytes;
+        //    throw new Exception($"Type mismatch, expected \"{type.name}\" but got \"{typename}\" instead!");
+        //}
     }
+    //public List<byte> ParseBytes(out string address, out bool isReference, ref byte min_arg_size)
+    //{
+    //    address = string.Empty;
+    //    isReference = false;
+    //    List<byte> bytes = new List<byte>();
+    //    bool autoDeclare = false;
+
+    //    bool hasType = TryConsumeType(out Type type);
+
+    //    if (Current == '@')
+    //    {
+    //        autoDeclare = true;
+    //        Consume('@');
+    //    }
+    //    do
+    //    {
+    //        SkipWhitespaceAndComments();
+    //        if (Current == '"') //string
+    //        {
+    //            string str = ConsumeString();
+    //            foreach (byte b in str) bytes.Add(b);
+    //            isReference = false;
+    //            address = string.Empty;
+    //        }
+    //        else if (Current == '\'') //char
+    //        {
+    //            char chr = ConsumeChar();
+    //            bytes.Add((byte)chr);
+    //            isReference = false;
+    //            address = string.Empty;
+    //        }
+    //        else if (Current == '0' && Peek(1) is 'x' or 'X') //byte 0xFF (only parse 2 hex to make up the byte)
+    //        {
+    //            Consume('0');
+    //            Position++; // Consume 'x' or 'X'
+
+    //            string hexText = "";
+    //            for (int i = 0; i < 2; i++) // Read exactly 2 characters
+    //            {
+    //                char c = Peek(i);
+    //                if (!c.IsHexDigit()) // Validate if character is in 0-9, A-F, a-f
+    //                    throw new FormatException($"Invalid hex character: '{c}'");
+
+    //                hexText += c;
+    //            }
+    //            Position += 2; // Advance the position by 2
+
+    //            byte result = Convert.ToByte(hexText, 16); // Convert hex string to byte
+    //            bytes.Add(result);
+    //            isReference = false;
+    //            address = string.Empty;
+    //        }
+    //        else if (Current == '0' && Peek(1) is 'b' or 'B') //binary 0b00001111 (only parse 8 (0 or 1) to make up the byte)
+    //        {
+    //            Consume('0');
+    //            Position++; // Consume 'b' or 'B'
+
+    //            string binaryText = "";
+    //            for (int i = 0; i < 8; i++) // Read next 8 characters
+    //            {
+    //                char c = Peek(i);
+    //                if (c != '0' && c != '1')
+    //                    throw new FormatException($"Invalid binary character: '{c}'");
+
+    //                binaryText += c;
+    //            }
+    //            Position += 8; // Advance position by 8
+
+    //            byte result = Convert.ToByte(binaryText, 2); // Convert binary to byte
+    //            bytes.Add(result);
+    //            isReference = false;
+    //            address = string.Empty;
+    //        }
+    //        else if (Current is '-')
+    //        {
+    //            Consume('-');
+    //            if (char.IsDigit(Current)) //signed negative number
+    //            {
+    //                string numberText = "-";
+
+    //                while (char.IsDigit(Current))
+    //                {
+    //                    numberText += Current;
+    //                    Position++;
+    //                }
+
+    //                //convert string to integer
+    //                if (!int.TryParse(numberText, out int number))
+    //                    throw new FormatException($"Invalid number format: {numberText}");
+
+    //                // make bytes
+    //                bytes.AddRange(number.ToByteArrayWithNegative());
+    //                isReference = false;
+    //                address = string.Empty;
+    //            }
+    //            else throw new Exception($"unexpected character trying to parse signed number {CurrentlyConsuming} {ExtraConsumingInfo}");
+    //        }
+    //        else if (char.IsDigit(Current)) //normal numbers
+    //        {
+    //            string numberText = "";
+
+    //            while (char.IsDigit(Current))
+    //            {
+    //                numberText += Current;
+    //                Position++;
+    //            }
+
+    //            //convert string to integer
+    //            if (!uint.TryParse(numberText, out uint number))
+    //                throw new FormatException($"Invalid number format: {numberText}");
+
+    //            // make bytes
+    //            bytes.AddRange(number.ToByteArrayUnsigned());
+    //            isReference = false;
+    //            address = string.Empty;
+    //        }
+    //        else if (Current is '#')// or '&')
+    //        {
+    //            //throw new Exception("not updated yet");
+    //            char specialLookup = Current;
+    //            Position++;
+    //            string varName = ConsumeIdentifier();
+    //            ExtraConsumingInfo = $"varName: {varName}";
+
+    //            var declare = Declares.FirstOrDefault(d => d.name == varName);
+    //            var struc = Structs.FirstOrDefault(s => s.name == varName);
+    //            if (declare is null && struc is null)
+    //                throw new Exception($"Identifier:{varName} not found as declare or struct.");
+
+    //            if (declare is not null)
+    //            {
+    //                if (specialLookup is '#') //raw value, embed if possible
+    //                {   //if its embedded, the value is copied and therefore not included twice in final binary
+    //                    if (declare.value.Count() == 0)
+    //                        throw new Exception($"Cant embed uninitialized declare \"{declare.name}\"");
+    //                    bytes.AddRange(declare.value);
+    //                    isReference = false;
+    //                }
+    //                //else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
+    //                //{   // we set the address with &, so its marked as immidate
+    //                //    declare.used = true;
+    //                //    address = varName;
+    //                //    isReference = false;
+    //                //}
+    //            }
+    //            else if (struc is not null)
+    //            {
+    //                if (specialLookup is '#') //raw value, embed if possible
+    //                {
+    //                    if (Current is '.')
+    //                    {
+    //                        Consume('.');
+    //                        var fieldIdent = ConsumeIdentifier();
+    //                        StructField field = struc.fields.FirstOrDefault(f => f.name == fieldIdent);
+    //                        if (field == null)
+    //                            throw new Exception($"Struct {varName} does not contain field:{field}.");
+    //                        bytes.AddRange(field.inital_value);
+    //                    }
+    //                    else
+    //                    {
+    //                        if (struc.fields.Count() == 0)
+    //                            throw new Exception($"Cant embed uninitialized struct \"{struc.name}\"");
+    //                        bytes.AddRange(struc.MakeDeclare().value);
+    //                        isReference = false;
+    //                    }
+    //                }
+    //                //else if (specialLookup is '&') //address of value, to have an address the declare needs to be included
+    //                //{   // we set the address with &, so its marked as immidate
+    //                //    struc.used = true;
+    //                //    address = varName;
+    //                //    isReference = false;
+    //                //}
+    //            }
+    //        }
+    //        else if (Current.IsVarible()) //either label/address or meta/varible/declare
+    //        {
+    //            string varName = ConsumeIdentifier();
+    //            ExtraConsumingInfo = $"varName: {varName}";
+
+    //            var declare = Declares.FirstOrDefault(d => d.name == varName);
+    //            var struc = Structs.FirstOrDefault(d => d.name == varName);
+    //            if (declare is not null)
+    //            {
+    //                byte size = GetSize(((UInt64)Declares.IndexOf(declare)).GetAmountOfBytesNeeded());
+    //                if (size > min_arg_size)
+    //                    min_arg_size = size;
+
+    //                declare.used = true;
+    //                isReference = true;
+    //                address = varName;
+    //            }
+    //            else if (struc is not null)
+    //            {
+    //                if (Current is '.')
+    //                {
+    //                    Consume('.');
+    //                    var field = ConsumeIdentifier();
+    //                    var idx = struc.fields.FindIndex(f => f.name == field);
+    //                    if (idx == -1)
+    //                        throw new Exception($"Struct {varName} does not contain field:{field}.");
+    //                    bytes.AddRange(idx.ToByteArrayWithNegative());
+    //                }
+    //                else
+    //                {
+    //                    byte size = GetSize(((UInt64)(Declares.Count() + Structs.IndexOf(struc))).GetAmountOfBytesNeeded());
+    //                    if (size > min_arg_size)
+    //                        min_arg_size = size;
+
+    //                    struc.used = true;
+    //                    isReference = true;
+    //                    address = varName;
+    //                }
+    //            }
+    //            else if (syscalls.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
+    //                continue;
+    //            else if (math_modes.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
+    //                continue;
+    //            else if (compare_modes.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
+    //                continue;
+    //            else if (buffer_modes.IfContainsThenAddBytesArray(varName.ToUpper(), ref bytes))
+    //                continue;
+    //            else if (Labels.ContainsKey(varName))
+    //            {
+    //                var addr = Labels[varName];
+    //                if (addr == UInt64.MaxValue)
+    //                {
+    //                    min_arg_size = 4; //labels we dont know just take up 4 bytes
+    //                    isReference = true;
+    //                    address = '&' + varName; //tell byte parser to ignore the reference and mark as imidate but still lookup address
+    //                }
+    //                else
+    //                {
+    //                    var newBytes = ((int)addr).ToByteArrayWithNegative();
+    //                    if (newBytes.Count() > min_arg_size)
+    //                        min_arg_size = (byte)newBytes.Count();
+
+    //                    bytes.AddRange(newBytes);
+    //                    isReference = false;
+    //                    address = string.Empty;
+    //                }
+    //            }
+    //            else if (Defines.TryGetValue(varName.ToUpper(), out string value))
+    //            {
+    //                Position -= varName.Length;
+    //                this.Analizable.RemoveRange(Position, varName.Length);
+    //                this.Analizable.InsertRange(Position, (',' + value).ToList()); //little hack to restart add, and continue;
+    //                continue;
+    //            }
+    //            else
+    //            {
+    //                throw new Exception($"Identifier:{varName} not found, its not a label nor a declared varible or var, nor syscall,math_mode nor compare_mode");
+    //            }
+    //            if (Current is '.')
+    //            {
+    //                Consume('.');
+    //                var field = ConsumeIdentifier();
+    //                throw new Exception($"Unable to index into field:{field} on {varName} because {varName} was not a struct!");
+    //            }
+    //        }
+    //        else
+    //        {
+    //            throw new Exception($"Unexpected \"{Current}\" while parsing bytes, expected either a number(1) or byte(0xFF) or binary(0b00001111) or char('H') or string(\"hello\") or address of sorts");
+    //        }
+    //        SkipWhitespaceAndComments();
+    //    }
+    //    //while (Safe && hasType && type.name == "raw");
+    //    while (Safe && IfConsume(','));
+
+    //    if (autoDeclare)
+    //    {
+    //        if (bytes.Count() <= 4)
+    //            logger?.LogWarning("Declaring array within 4 bytes is not needed");
+    //        string generatedName = $"_{autoGeneratedDeclares++}";
+    //        int index = AddDeclare(new Declare(generatedName, bytes.ToArray()) { used = true});
+
+    //        byte size = GetSize(((UInt64)index).GetAmountOfBytesNeeded());
+    //        if (size > min_arg_size)
+    //            min_arg_size = size;
+    //        bytes.Clear();
+    //        bytes.AddRange(((UInt32)index).ToByteArrayUnsigned());
+
+    //        isReference = true;
+    //        address = generatedName;
+    //    }
+
+    //    return bytes;
+    //}
     public void CheckName(string name)
     {
         Exception makeException(string type)
-        { 
-            return new Exception($"Error parsing: {CurrentlyConsuming} {name} with name \"{name}\" already exists!"); ;
+        {
+            if (type.EndsWith('s')) type = type.Substring(0, type.Length - 1);
+            return new Exception($"Error parsing: {CurrentlyConsuming} \"{name}\" already a {type}!");
         }
         if (Declares.Any(d => d.name == name)) throw makeException(nameof(Declares));
         if (Labels.ContainsKey(name)) throw makeException(nameof(Labels));
@@ -512,6 +678,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         if (math_modes.Contains(name)) throw makeException(nameof(math_modes));
         if (compare_modes.Contains(name)) throw makeException(nameof(compare_modes));
         if (buffer_modes.Contains(name)) throw makeException(nameof(buffer_modes));
+        if (FindType(name) != null) throw makeException(nameof(Types));
     }
     public string ParseAndResolveLabelAndInstructionAddresses(string input)
     {
@@ -712,30 +879,35 @@ public partial class FriedAssembler : AnalizerBase<char>
                 SkipWhitespaceAndComments();
                 while (Safe && Find("field"))
                 {
-                    const string valid = "1234*";
+                    //const string valid = "1234*";
+                    SkipWhitespaceAndComments();
+                    Type type = ConsumeType();
                     SkipWhitespaceAndComments();
                     string fieldName = ConsumeIdentifier();
+                    SkipWhitespaceAndComments();
+
                     ExtraConsumingInfo = $"structDeclareName: {structDeclareName} fieldName: {fieldName}";
-                    StructField field = new StructField(fieldName);
-                    SkipWhitespaceAndComments();
-                    Consume(':');
-                    SkipWhitespaceAndComments();
-                    var idx = valid.IndexOf(Current);
-                    if (idx == -1)
-                        throw new Exception($"Unknown value type for struct field '{Current}' {ExtraConsumingInfo}");
-                    else
-                    {
-                        field.size = idx+1;
-                        field.immidiate = true;
-                        field.inital_value = new byte[field.size];
-                        field.address = null;
-                        if (Current is '*')
-                            field.immidiate = false; //field size for pointers will get changed later
-                        Position++;
-                    }
-                    SkipWhitespaceAndComments();
+                    StructField field = new StructField(type, fieldName);
+                    //SkipWhitespaceAndComments();
+                    //Consume(':');
+                    //SkipWhitespaceAndComments();
+                    //var idx = valid.IndexOf(Current);
+                    //if (idx == -1)
+                    //    throw new Exception($"Unknown value type for struct field '{Current}' {ExtraConsumingInfo}");
+                    //else
+                    //{
+                    //    field.size = idx+1;
+                    //    field.immidiate = true;
+                    //    field.inital_value = new byte[field.size];
+                    //    field.address = null;
+                    //    if (Current is '*')
+                    //        field.immidiate = false; //field size for pointers will get changed later
+                    //    Position++;
+                    //}
+                    //SkipWhitespaceAndComments();
                     if (Current == '=')
                     {
+                        Declare decl = ParseVarible(type);
                         Consume('=');
                         SkipWhitespaceAndComments();
                         byte b=0;
@@ -760,6 +932,8 @@ public partial class FriedAssembler : AnalizerBase<char>
             }
             if (FindStart("declare "))
             {
+                Type type = ConsumeType();
+                SkipWhitespaceAndComments();
                 string declareName = ConsumeIdentifier();
                 ExtraConsumingInfo = $"declareName: {declareName}";
 
@@ -770,15 +944,18 @@ public partial class FriedAssembler : AnalizerBase<char>
                 {
                     Consume('=');
                     SkipWhitespaceAndComments();
-                    byte b=0;
-                    List<byte> bytes = ParseBytes(out _, out _, ref b);
+                    var declare = ParseVarible();
+                    AddDeclare(declare);
                     Consume(';');
-                    AddDeclare(new Declare(declareName, bytes.ToArray()));
+                    //byte b=0;
+                    //List<byte> bytes = ParseBytes(out _, out _, ref b);
+                    //Consume(';');
+                    //AddDeclare(new Declare(type, declareName, bytes.ToArray()));
                 }
                 else if (Current == ';')
                 {
                     Consume(';');
-                    AddDeclare(new Declare(declareName, new byte[0]));
+                    AddDeclare(new Declare(type, declareName, new byte[0]));
                 }
                 else
                 {
@@ -945,6 +1122,16 @@ public partial class FriedAssembler : AnalizerBase<char>
         var comment = ConsumeUntilEnter();
         logger?.LogDetail("Comment removed:" + comment);
         SkipWhitespace();
+    }
+    private bool TryConsumeType(out Type type)
+    {
+        string typename = ConsumeIdentifier();
+        return TryGetType(typename, out type);
+    }
+    private Type ConsumeType()
+    { 
+        string typename = ConsumeIdentifier();
+        return FindType(typename);
     }
     private string ConsumeIdentifier()
     {

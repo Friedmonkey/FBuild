@@ -2,14 +2,16 @@
 
 namespace FBuild.Assembler;
 
-[DebuggerDisplay("{name}:{value}")]
+[DebuggerDisplay("{type.name} {name}:{value}")]
 public class Declare
 {
-    public Declare(string name, byte[] value = null)
+    public Declare(Type type, string name, byte[] value = null)
     {
+        this.type = type;
         this.name = name;
         this.value = value;
     }
+    public Type type;
     public string name;
     public byte[] value;
     public bool used = false;

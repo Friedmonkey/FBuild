@@ -17,4 +17,6 @@ public class Type
     public byte[] value;
     public bool used = false;
     public byte[] default_value = new byte[] { 0x00 };
+
+    public Struct structDef = null;
 }

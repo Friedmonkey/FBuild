@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 
 namespace FBuild.Assembler;
@@ -51,6 +54,27 @@ public class AssemblerDefinitions
         { "l",  "int64"},  
         { "f",  "float32"},  
         { "d",  "float64"},  
+    };
+    public static Dictionary<string, HashSet<string>> CompatibleTypes = new Dictionary<string, HashSet<string>>()
+    {
+        { "raw",            []},
+        { "string",         []},
+        { "uint8",          []},
+        { "uint16",         ["uint8"]},
+        { "uint32",         ["uint16", "uint8"]},
+        { "uint64",         ["uint32", "uint16", "uint8"]},
+        { "int8",           []},
+        { "int16",          ["int8"]},
+        { "int32",          ["int16", "int8"]},
+        { "int64",          ["int32", "int16", "int8"]},
+        { "float32",        []},
+        { "float64",        ["float32"]},
+        { "label",          []},
+        { "constant",       []},
+        { "complex_type",   []},
+        { "struct",         []},
+        { "array",          []},
+        { "pointer",        []},
     };
     public static bool TryGetType(string name, out Type type)
     {

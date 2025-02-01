@@ -34,7 +34,7 @@ public class Struct
         }
         //bytes.Add((byte)count);
         //bytes.AddRange(fields.Select(f => (byte)f.size));
-        return new Type("struct", bytes.ToArray());
+        return new Type("struct", bytes.ToArray()) { structDef = this };
     }
 }
 

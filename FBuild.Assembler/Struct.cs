@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FBuild.Common;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -15,20 +16,25 @@ public class Struct
     public string name;
     public List<StructField> fields = new();
     public bool used = false;
-    public Declare MakeDeclare()
+    public Type GetType()
     { 
-        int count = fields.Count;
-        if (count > byte.MaxValue) throw new Exception("Too many fields");
+        Arg count = fields.Count;
+        //if (count > byte.MaxValue) throw new Exception("Too many fields");
 
         List<byte> bytes = new();
-        bytes.Add(0xFF);
-        bytes.Add((byte)count);
-        bytes.AddRange(fields.Select(f => (byte)f.size));
+        bytes.AddRange(count.VLQ());
+        foreach (StructField f in fields)
+        {
+            bytes.AddRange(f.type.value);
+            //bytes.AddRange(f.inital_value);
+        }
         foreach (StructField f in fields)
         {
             bytes.AddRange(f.inital_value);
         }
-        return new Declare(AssemblerDefinitions.FindType("struct"), name, bytes.ToArray()) { used = this.used};
+        //bytes.Add((byte)count);
+        //bytes.AddRange(fields.Select(f => (byte)f.size));
+        return new Type("struct", bytes.ToArray());
     }
 }
 

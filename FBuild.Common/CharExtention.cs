@@ -6,12 +6,13 @@ namespace FBuild.Common;
 
 public static class CharExtention
 {
-    public static bool IfContainsThenAddBytesArray(this List<string> strings, string name, ref List<byte> bytes)
+    public static bool IfContains(this List<string> strings, string name, out byte[] bytes)
     {
+        bytes = null;
         string varName = name.ToUpper();
         if (strings.Contains(varName))
         {
-            bytes.AddRange(strings.IndexOf(varName).ToByteArrayWithNegative());
+            bytes = strings.IndexOf(varName).VLQ();
             return true;
         }
         return false;
@@ -163,6 +164,28 @@ public static class CharExtention
 
         return result.ToByteString();
     }
+
+    public static byte[] VLQ(this Arg value)
+    {
+        List<byte> bytes = new List<byte>();
+
+        // While there are still bits left to encode
+        do
+        {
+            byte currentByte = (byte)(value & 0x7F); // Get the lower 7 bits
+            value >>= 7; // Right-shift by 7 bits
+
+            if (value > 0) // If there's more data to encode
+            {
+                currentByte |= 0x80; // Set the MSB to 1 to indicate more bytes follow
+            }
+
+            bytes.Add(currentByte); // Add the current byte to the list
+        } while (value > 0); // Continue until the whole value is encoded
+
+        return bytes.ToArray(); // Return the byte array
+    }
+
 
     public static string ToByteString(this UInt32 number)
     {

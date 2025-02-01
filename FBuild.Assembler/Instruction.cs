@@ -1,4 +1,7 @@
-﻿using System;
+﻿global using Arg = System.Int32;
+using FBuild.Common;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace FBuild.Assembler;
@@ -6,35 +9,24 @@ namespace FBuild.Assembler;
 [DebuggerDisplay("{def.name}:{arg_size}")]
 public class Instruction
 {
-    public Instruction(InstructionDefinition def, byte arg_size, bool immediate)
+    public Instruction(InstructionDefinition def, List<Arg> args)
     {                                             
         this.def = def;
-        this.arg_size = arg_size;
-        this.immediate = immediate;
+        this.args = args;
     }
     public InstructionDefinition def;
-    public byte arg_size; // Argument size (0–3)
-    public bool immediate;   // Immediate flag
-    public byte GetByte()
+    public List<Arg> args;
+    public IEnumerable<byte> GetBytes()
     {
-        // Ensure the opcode fits in 5 bits
-        if (def.op_code > 0b11111)
-            throw new ArgumentException("Opcode exceeds 5 bits!");
+        yield return def.op_code;
 
-        // Ensure arg_size is within valid range (1–4)
-        if (arg_size < 1 || arg_size > 4)
-            throw new ArgumentException("Argument size must be between 1 and 4!");
+        if (args.Count != def.paramCount)
+            throw new Exception("amount of paramters does not match the definition!");
 
-        // Map arg_size (1–4) to 2-bit binary values: (1 -> 00, 2 -> 01, 3 -> 10, 4 -> 11)
-        byte argSizeBits = (byte)((arg_size - 1) << 5);
-
-        // Immediate flag: Convert 'immediate' bool to 1 bit (1 for false, 0 for true)
-        byte immediateBit = immediate ? (byte)0 : (byte)(1 << 7);
-
-        // Combine all parts: Immediate Flag | Arg Size | Opcode
-        byte result = (byte)(immediateBit | argSizeBits | def.op_code);
-
-        return result; //takes flags and parameters into account
-        //return def.op_code; //simple vesion
+        foreach (var arg in args)
+        {
+            foreach (byte @byte in arg.VLQ())
+                yield return @byte;
+        }
     }
 }

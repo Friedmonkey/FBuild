@@ -16,4 +16,5 @@ public class Type
     public List<string> aliases;
     public byte[] value;
     public bool used = false;
+    public byte[] default_value = new byte[] { 0x00 };
 }

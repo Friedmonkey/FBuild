@@ -1,59 +1,7 @@
-﻿#define newline 0x0D, 0x0A
+﻿declare string msg = "hello world";
 
-push @"Enter the first number:"
-syscall print
-
-declare a;
-push a
-call getNumber
-
-push @newline, "Enter the second number:"
-syscall print
-
-declare b;
-push b
-call getNumber
-
-push @newline, "Now enter an opcode", newline,
-"All avalible opcodes are:", newline,
-"ADD = 0", newline,
-"SUB = 1", newline,
-"MUL = 4", newline,
-"DIV = 5", newline,
-"POW = 6", newline,
-"ROOT = 7", newline,
-"SQRT = 8", newline,
-"RAND = 9", newline,
-"Opcode index:"
-
-syscall print
-
-declare index;
-push index
-call getNumber
-
-push a
-push b
-math index
-
-set_buffer @"Your number is: %d"
-buffer_util format
-
-declare output;
-get_buffer output
-
-push output
+push msg
 syscall print
 
 push 0
 exit
-
-:getNumber
-dup 0
-dup 0
-syscall read
-syscall to_number_signed
-dup 1
-set_var
-pop
-ret

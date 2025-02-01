@@ -13,6 +13,7 @@ public class Declare
     }
     public Type type;
     public string name;
-    public byte[] value;
+    public byte[] value = null;
     public bool used = false;
+    public bool isConst = false;
 }

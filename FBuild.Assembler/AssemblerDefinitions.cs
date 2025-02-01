@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace FBuild.Assembler;
 public class AssemblerDefinitions
@@ -33,6 +34,8 @@ public class AssemblerDefinitions
         new Type("int64",           [0x18], "long",   "i64"),
         new Type("float32",         [0x19], "float",  "f32"),
         new Type("float64",         [0x1A], "double", "f64"),
+
+        new Type("label",           [0xE0]),
 
         new Type("complex_type",    [0xFC]),
         new Type("struct",          [0xFD]),

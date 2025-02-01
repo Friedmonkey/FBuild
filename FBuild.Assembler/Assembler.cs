@@ -135,6 +135,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         int byteCount = 0;
 
         StringBuilder sb = new StringBuilder();
+        //sb.Append(1_228008522.VLQ().ToByteString());
 
         // Add the magic "FXE" in byte format
         sb.Append("FXE".ToByteString()); // Converts "FXE" to hex (e.g., "46 58 45")
@@ -212,21 +213,22 @@ public partial class FriedAssembler : AnalizerBase<char>
         //declare values/const pool
         foreach (var declare in Declares)
         {
-            if (declare.type.value.Count() > 0)
+            if (declare.type.value.Count() > 1)
             {
                 //its complex type, we need to add extra data
-                sb.Append(declare.type.value.Skip(1).ToArray().ToByteString());
+                AppendBytes(declare.type.value.Skip(1).ToArray());
+                //sb.Append(.ToByteString());
             }
-            sb.Append(declare.value.ToByteString());
+            AppendBytes(declare.value);
         }
 
         if (includeSymbols)
         { 
             symbolHeaderPos = byteCount;
-            foreach (Declare dec in Declares)
+            foreach (string symbol in symbols)
             { 
-                sb.Append(dec.name.ToByteString());
-                byteCount += dec.name.Count();
+                sb.Append(symbol.ToByteString());
+                byteCount += symbol.Length;
                 sb.Append(((byte)0xBB).ToByteString()); //symbol split char, needs to be appended
                 byteCount++;
             }
@@ -235,10 +237,63 @@ public partial class FriedAssembler : AnalizerBase<char>
         string finalText = sb.ToString();
 
 
-        finalText = finalText.Replace(instructionHeader, instructionHeaderPos.VLQ().ToByteString());
-        finalText = finalText.Replace(constPoolHeader, constPoolHeaderPos.VLQ().ToByteString());
+        //instructionHeaderPos = 127;
+        //constPoolHeaderPos = 14334;
+        //symbolHeaderPos = 100000;
+
+        // Create copies of original positions for calculations
+        int tempInstructionPos = instructionHeaderPos;
+        int tempConstPoolPos = constPoolHeaderPos;
+        int tempSymbolPos = symbolHeaderPos;
+
+        int prevInstructionSize = -1, prevConstPoolSize = -1, prevSymbolSize = -1;
+        int instructionHeaderSize, constPoolHeaderSize, symbolHeaderSize;
+
+        // Iteratively adjust header sizes until they stabilize
+        while (true)
+        {
+            instructionHeaderSize = tempInstructionPos.VLQ().Length;
+            constPoolHeaderSize = tempConstPoolPos.VLQ().Length;
+            symbolHeaderSize = includeSymbols ? tempSymbolPos.VLQ().Length : 0;
+
+            if (instructionHeaderSize == prevInstructionSize &&
+                constPoolHeaderSize == prevConstPoolSize &&
+                (!includeSymbols || (symbolHeaderSize == prevSymbolSize)))
+            {
+                break;
+            }
+
+            prevInstructionSize = instructionHeaderSize;
+            prevConstPoolSize = constPoolHeaderSize;
+            prevSymbolSize = symbolHeaderSize;
+
+            int headerOffset = instructionHeaderSize + constPoolHeaderSize + symbolHeaderSize;
+
+            tempInstructionPos = instructionHeaderPos + headerOffset;
+            tempConstPoolPos = constPoolHeaderPos + headerOffset;
+            if (includeSymbols)
+                tempSymbolPos = symbolHeaderPos + headerOffset;
+        }
+
+        // Once stabilized, set the real header positions
+        instructionHeaderPos = tempInstructionPos;
+        constPoolHeaderPos = tempConstPoolPos;
+        symbolHeaderPos = tempSymbolPos;
+
+        var VLQInstructionPos = instructionHeaderPos.VLQ();
+        var VLQConstPoolPos = constPoolHeaderPos.VLQ();
+        var VLQSymbolPos = symbolHeaderPos.VLQ();
+        if (VLQInstructionPos.Length != instructionHeaderSize)
+            throw new Exception("instruction header size mismatch!");
+        if (VLQConstPoolPos.Length != constPoolHeaderSize)
+            throw new Exception("constPool header size mismatch!");
+        if (includeSymbols && VLQSymbolPos.Length != symbolHeaderSize)
+            throw new Exception("symbol header size mismatch!");
+
+        finalText = finalText.Replace(instructionHeader, VLQInstructionPos.ToByteString());
+        finalText = finalText.Replace(constPoolHeader, VLQConstPoolPos.ToByteString());
         if (includeSymbols) 
-            finalText = finalText.Replace(symbolHeader, symbolHeaderPos.VLQ().ToByteString());
+            finalText = finalText.Replace(symbolHeader, VLQSymbolPos.ToByteString());
 
         return finalText;
 
@@ -388,7 +443,7 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 Consume('.'); //will handle errors
                 var field = ConsumeIdentifier();
-                Arg idx = struc.fields.FindIndex(f => f.name == field);
+                int idx = struc.fields.FindIndex(f => f.name == field);
                 if (idx == -1)
                     throw new Exception($"Struct {varName} does not contain field:{field}.");
                 bytes.AddRange(idx.VLQ());
@@ -512,7 +567,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         if (Current.IsVarible())
         { 
             var ident = ConsumeIdentifier();
-            Arg varIndex = Declares.FindIndex(d => d.name == ident);
+            int varIndex = Declares.FindIndex(d => d.name == ident);
             if (varIndex == -1)
             {
                 //is not actually identifier

@@ -1,5 +1,4 @@
-﻿global using Arg = System.Int32;
-using FBuild.Common;
+﻿using FBuild.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

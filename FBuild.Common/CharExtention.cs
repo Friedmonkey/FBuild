@@ -165,7 +165,7 @@ public static class CharExtention
         return result.ToByteString();
     }
 
-    public static byte[] VLQ(this Arg value)
+    public static byte[] VLQ(this int value)
     {
         List<byte> bytes = new List<byte>();
 

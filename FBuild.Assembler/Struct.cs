@@ -18,7 +18,7 @@ public class Struct
     public bool used = false;
     public Type GetType()
     { 
-        Arg count = fields.Count;
+        int count = fields.Count;
         //if (count > byte.MaxValue) throw new Exception("Too many fields");
 
         List<byte> bytes = new();

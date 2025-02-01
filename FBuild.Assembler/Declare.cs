@@ -2,7 +2,7 @@
 
 namespace FBuild.Assembler;
 
-[DebuggerDisplay("{type.name} {name}:{value}")]
+[DebuggerDisplay("{type.name} {name}:{type.name == \"string\" ? System.Text.Encoding.Default.GetString(value) : (value.Length == 1 ? (\"\"+value[0]) : value.ToString()) }")]
 public class Declare
 {
     public Declare(Type type, string name, byte[] value = null)

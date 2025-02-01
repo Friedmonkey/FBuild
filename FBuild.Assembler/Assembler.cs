@@ -81,7 +81,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         if (Declares.Count() == 0)
             hasSymbols = false;
         var MetaSize = MaxDeclareSize.GetAmountOfBytesNeeded();
-        input = FinalGenerator(input, address_offset, MetaSize, hasSymbols, 1);
+        input = FinalGenerator(hasSymbols, 1);
         UpdateAndReset();
 
         //convert string like "20 54 6A" to actual bytes
@@ -109,138 +109,134 @@ public partial class FriedAssembler : AnalizerBase<char>
             _ => throw new NotSupportedException()
         };
     }
-    private byte PackVersion(Size header, Size meta, Size emptyVar, bool includeSymbols, byte version)
+    private byte PackVersion(bool includeSymbols, byte version)
     {
         // Ensure version does not exceed 1 bit
-        version &= 0b00000001;
+        version &= 0b01111111;
 
         // Pack all fields into a single byte
         byte versionByte = (byte)(
-            ((byte)header << 6) |            // Header: shift 6 bits to the left
-            ((byte)meta << 4) |              // Meta: shift 4 bits to the left
-            ((byte)emptyVar << 2) |              // emptyVar: shift 2 bits to the left
-            (includeSymbols ? 0b00000010 : 0) | // IncludeSymbols: add second bit
-            (version & 0b00000001)           // Version: mask lower bit
+            (includeSymbols ? 0b10000000 : 0) | // IncludeSymbols: add second bit
+            (version & 0b01111111)           // Version: mask lower bit
         );
 
         return versionByte;
     }
-    private string FinalGenerator(string instructions, int instructions_offset, Size meta, bool includeSymbols, byte version)
+    private string FinalGenerator(bool includeSymbols, byte version)
     {
-        const string emptyVarCountHeader = "%emptyVarCountHeader%";
+        //const string emptyVarCountHeader = "%emptyVarCountHeader%";
         const string instructionHeader = "%instructionHeader%";
         const string constPoolHeader = "%constPoolHeader%";
         const string symbolHeader = "%symbolHeader%";
-        const string versionByteTemp = "%versionByte%";
-        byte meta_size = GetSize(meta);
-        UInt64 instructionHeaderPos = 0;
-        UInt64 constPoolHeaderPos = 0;
-        UInt64 symbolHeaderPos = 0;
-        UInt64 byteCount = 0;
+
+        int instructionHeaderPos = 0;
+        int constPoolHeaderPos = 0;
+        int symbolHeaderPos = 0;
+
+        int byteCount = 0;
+
         StringBuilder sb = new StringBuilder();
+
         // Add the magic "FXE" in byte format
         sb.Append("FXE".ToByteString()); // Converts "FXE" to hex (e.g., "46 58 45")
-        sb.Append(includeSymbols ? "01" : "00");
+        sb.Append(PackVersion(includeSymbols, version).ToByteString());
         byteCount += 4;//magic
-        //sb.Append(emptyVarCountHeader);
-        //byteCount += 0; //calculate later
+
         sb.Append(instructionHeader);
         byteCount += 0; //calculate later
+
         sb.Append(constPoolHeader);
         byteCount += 0; //calculate later
+
         if (includeSymbols)
         {
             sb.Append(symbolHeader);
             byteCount += 0; //calculate later
         }
-        var groupedByType = Declares.GroupBy(d => d.type);
+
         //declare meta
+        var groupedByType = Declares.GroupBy(d => d.type);
+        Declares = new List<Declare>();
         foreach (var typeGroup in groupedByType)
         {
-            sb.Append(typeGroup.Key.value.ToByteString());
-            int amountDefault = typeGroup.Count(d => d.value.SequenceEqual(d.type.default_value));
-            int amountConst = typeGroup.Count(d => d.isConst);
-            int amountVar = typeGroup.Count() - amountConst - amountDefault;
-            sb.Append(amountDefault.VLQ());
-            sb.Append(amountVar.VLQ());
-            sb.Append(amountConst.VLQ());
-        }
+            var declaredConst = typeGroup.Where(d => d.isConst);
+            var declaredVar = typeGroup.Where(d => !d.isConst);
 
-        foreach (var instruction in Instructions)
-        {
-            sb.Append(instruction.GetBytes().ToArray().ToByteString());
-        }
+            var typeBytes = typeGroup.Key.value;
 
-        //declare values
-        foreach (var typeGroup in groupedByType)
-        {
-            foreach (var declareOfType in typeGroup)
-            {
+            AppendDeclared(declaredConst, isConst:true);
+            AppendDeclared(declaredVar, isConst:false);
 
+            void AppendDeclared(IEnumerable<Declare> declared, bool isConst)
+            { 
+                if (declared.Any())
+                {
+                    if (isConst)
+                        AppendBytes(FindType("constant").value);
+                    AppendBytes(typeBytes);
+
+                    //var declaredDefault = declared.Where(d => d.value.SequenceEqual(d.type.default_value));
+                    //var declaredValue = declared.Except(declaredDefault);
+
+                    //Declares.AddRange(declaredDefault);
+                    //Declares.AddRange(declaredValue);
+
+                    var declaredValue = declared.Where(d => !d.value.SequenceEqual(d.type.default_value));
+                    var declaredDefault = declared.Except(declaredValue).Count();
+
+                    Declares.AddRange(declaredValue);
+
+                    AppendBytes(declaredDefault.VLQ());
+                    AppendBytes(declaredValue.Count().VLQ());
+                }
             }
         }
-        for (int i = 0; i < declare_size; i++) //the meta for initialized declares
-        {
-            Declare dec = Declares[i];
-            sb.Append(((UInt64)dec.value.Count()).ToFixedByteArray(meta_size));
-            byteCount += meta_size;
-        }
         instructionHeaderPos = byteCount;
-        sb.Append(instructions);
-        byteCount += (UInt64)instructions_offset;
-        constPoolHeaderPos = byteCount;
-        foreach (Declare dec in Declares) //the the values for initialized declares
+        //append instructions
+        foreach (var instruction in Instructions)
         {
-            sb.Append(dec.value.ToByteString());
-            byteCount += (UInt64)dec.value.Count();
+            AppendBytes(GetInstructionBytes(instruction));
         }
+
+        constPoolHeaderPos = byteCount;
+        //declare values/const pool
+        foreach (var declare in Declares)
+        {
+            if (declare.type.value.Count() > 0)
+            {
+                //its complex type, we need to add extra data
+                sb.Append(declare.type.value.Skip(1).ToArray().ToByteString());
+            }
+            sb.Append(declare.value.ToByteString());
+        }
+
         if (includeSymbols)
         { 
             symbolHeaderPos = byteCount;
             foreach (Declare dec in Declares)
             { 
                 sb.Append(dec.name.ToByteString());
-                byteCount += (UInt64)dec.name.Count();
+                byteCount += dec.name.Count();
                 sb.Append(((byte)0xBB).ToByteString()); //symbol split char, needs to be appended
                 byteCount++;
             }
         }
 
-        UInt64 emptyVarCount = (UInt64)(Declares.Count() - declare_size);
-        Size emptyVar = emptyVarCount.GetAmountOfBytesNeeded();
-        byte emptyVar_size = GetSize(emptyVar);
-
         string finalText = sb.ToString();
 
-        //calculate the bytes needed for header size
-        int numHeaders = includeSymbols ? 3 : 2;
-        UInt64 largestHeader = includeSymbols ? symbolHeaderPos : constPoolHeaderPos;
-        largestHeader += (UInt64)(numHeaders*8); //go off the largest
 
-        Size bytesNeeded = largestHeader.GetAmountOfBytesNeeded();
-        byte header_size = GetSize(bytesNeeded);
-        byte versionByte = PackVersion(bytesNeeded, meta, emptyVar, includeSymbols, version);
-
-        UInt64 headerOffset = (UInt64)(numHeaders * header_size) + emptyVar_size;
-
-        instructionHeaderPos += headerOffset;
-        constPoolHeaderPos += headerOffset;
-        if (includeSymbols)
-            symbolHeaderPos += headerOffset;
-
-        byteCount += headerOffset;
-
-
-        finalText = finalText.Replace(versionByteTemp, versionByte.ToByteString()); //replace the version byte
-
-        finalText = finalText.Replace(emptyVarCountHeader, emptyVarCount.ToFixedByteArray(emptyVar_size));
-
-        finalText = finalText.Replace(instructionHeader, instructionHeaderPos.ToFixedByteArray(header_size));
-        finalText = finalText.Replace(constPoolHeader, constPoolHeaderPos.ToFixedByteArray(header_size));
+        finalText = finalText.Replace(instructionHeader, instructionHeaderPos.VLQ().ToByteString());
+        finalText = finalText.Replace(constPoolHeader, constPoolHeaderPos.VLQ().ToByteString());
         if (includeSymbols) 
-            finalText = finalText.Replace(symbolHeader, symbolHeaderPos.ToFixedByteArray(header_size));
+            finalText = finalText.Replace(symbolHeader, symbolHeaderPos.VLQ().ToByteString());
 
         return finalText;
+
+        void AppendBytes(byte[] bytes)
+        {
+            byteCount += bytes.Length;
+            sb.Append(bytes.ToByteString());
+        }
     }
 
     public Declare ParseVarible(Type type = null, string name = null)
@@ -370,7 +366,8 @@ public partial class FriedAssembler : AnalizerBase<char>
             string varName = ConsumeIdentifier();
             ExtraConsumingInfo = $"varName: {varName}";
 
-            var declare = Declares.FirstOrDefault(d => d.name == varName);
+
+            var declare = GetDeclare(varName);
             var struc = Structs.FirstOrDefault(d => d.name == varName);
             if (declare is not null)
             {
@@ -388,25 +385,25 @@ public partial class FriedAssembler : AnalizerBase<char>
             }
             else if (syscalls.IfContains(varName.ToUpper(), out extraBytes))
             {
-                TypeCheck("int");
+                TypeCheck("uint");
                 name ??= "idx_"+varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (math_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
-                TypeCheck("int");
+                TypeCheck("uint");
                 name ??= "idx_"+varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (compare_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
-                TypeCheck("int");
+                TypeCheck("uint");
                 name ??= "idx_"+varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (buffer_modes.IfContains(varName.ToUpper(), out extraBytes))
             { 
-                TypeCheck("int");
+                TypeCheck("uint");
                 name ??= "idx_"+varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
@@ -489,7 +486,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         //    throw new Exception($"Type mismatch, expected \"{type.name}\" but got \"{typename}\" instead!");
         //}
     }
-    public Arg ParseArgument() 
+    public string ParseArgument() 
     {
         SkipWhitespaceAndComments();
         if (Current.IsVarible())
@@ -503,11 +500,14 @@ public partial class FriedAssembler : AnalizerBase<char>
             }
             else
             {
-                return varIndex;
+                Declares[varIndex].used = true;
+                return ident;
             }
         }
         //it is imidate value
         var newVar = ParseVarible();
+        newVar.used = true; //aruments are used
+        newVar.isConst = true;
         return AddDeclare(newVar);
     }
     //public List<byte> ParseBytes(out string address, out bool isReference, ref byte min_arg_size)
@@ -900,12 +900,12 @@ public partial class FriedAssembler : AnalizerBase<char>
                 }
                 //byte min_arg_size = 1;
                 //bool isAddr = false;
-                List<Arg> arguments = new List<Arg>();
+                List<string> arguments = new List<string>();
                 //List<Arg> arguments = new List<Arg>();
                 for (int i = 0; i < def.paramCount; i++)
                 {
-                    var varIndex = ParseArgument();
-                    arguments.Add(varIndex);
+                    var varName = ParseArgument();
+                    arguments.Add(varName);
 
                     //var arg_bytes = ParseBytes(out string addr, out bool isReference, ref min_arg_size);
                     //if (addr.StartsWith('&')) //for labels we dont know yet
@@ -967,7 +967,8 @@ public partial class FriedAssembler : AnalizerBase<char>
 
                 var instruction = new Instruction(def, arguments);
                 Instructions.Add(instruction);
-                address_offset += instruction.GetBytes().Count();
+                //address_offset += instruction.GetBytes().Count();
+                address_offset += GetInstructionBytes(instruction).Count();//.GetBytes().Count();
                 //var bytes = instruction.GetBytes().ToList();
                 //address_offset++;
 
@@ -980,6 +981,21 @@ public partial class FriedAssembler : AnalizerBase<char>
             }
         }
         //return FinalText;
+    }
+    public byte[] GetInstructionBytes(Instruction instruction)
+    {
+        List<byte> bytes = new List<byte>();
+        bytes.Add(instruction.def.op_code);
+
+        if (instruction.args.Count != instruction.def.paramCount)
+            throw new Exception("amount of paramters does not match the definition!");
+
+        foreach (var arg in instruction.args)
+        {
+            var idx = GetDeclareIndex(arg);
+            bytes.AddRange(idx.VLQ());
+        }
+        return bytes.ToArray();
     }
     public void GetLabels(string input)
     {
@@ -1115,7 +1131,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         }
         return FinalText;
     }
-    private int AddDeclare(Declare declare)
+    private string AddDeclare(Declare declare)
     {
 #warning this is terrible, if we dont use it why set it to the max size, this will need to be done later
         if ((UInt64)declare.value.Count() > MaxDeclareSize)
@@ -1123,7 +1139,16 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         logger?.LogDetail($"declare {declare.name} was added");
         Declares.Add(declare);
-        return Declares.Count()-1;
+        //return Declares.Count()-1;
+        return declare.name;
+    }
+    private Declare GetDeclare(string name)
+    {
+        return Declares.FirstOrDefault(d => d.name == name);
+    }
+    private int GetDeclareIndex(string name)
+    {
+        return Declares.FindIndex(d => d.name == name);
     }
     public string ParseIncludes(string input)
     {

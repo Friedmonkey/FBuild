@@ -37,6 +37,7 @@ public class AssemblerDefinitions
 
         new Type("label",           [0xE0]),
 
+        new Type("constant",        [0xFB], "const"),
         new Type("complex_type",    [0xFC]),
         new Type("struct",          [0xFD]),
         new Type("array",           [0xFE]),

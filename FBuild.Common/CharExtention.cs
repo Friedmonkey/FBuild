@@ -214,6 +214,8 @@ public static class CharExtention
     }
     public static string ToByteString(this byte[] input)
     {
+        if (input.Length == 0)
+            return "00 ";
         StringBuilder sb = new StringBuilder();
 
         foreach (byte c in input)

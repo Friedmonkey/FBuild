@@ -40,6 +40,7 @@ public class AssemblerDefinitions
 
         new Type("label",           [0xE0]),
 
+        new Type("lazy",            [0xFA]),
         new Type("constant",        [0xFB], "const"),
         new Type("complex_type",    [0xFC]),
         new Type("struct",          [0xFD]),

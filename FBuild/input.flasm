@@ -1,7 +1,7 @@
-﻿declare string msg = "hello world";
+﻿//declare string msg = "hello world";
 
-push msg
-syscall print
+//push msg
+//syscall print
 
-push 0
+push 5
 exit

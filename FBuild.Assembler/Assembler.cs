@@ -219,7 +219,8 @@ public partial class FriedAssembler : AnalizerBase<char>
                 AppendBytes(declare.type.value.Skip(1).ToArray());
                 //sb.Append(.ToByteString());
             }
-            AppendBytes(declare.value);
+            
+            AppendBytes(declare.GetValue());
         }
 
         if (includeSymbols)

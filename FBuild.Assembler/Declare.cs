@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Security;
 
 namespace FBuild.Assembler;
 
@@ -16,4 +17,12 @@ public class Declare
     public byte[] value = null;
     public bool used = false;
     public bool isConst = false;
+    public byte[] GetValue()
+    {
+        if (type.size is null) return value;
+        if (value.Length == type.size) return value;
+
+        //the value but padded to the size it needs
+        return value;
+    }
 }

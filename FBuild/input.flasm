@@ -1,7 +1,13 @@
 ﻿//declare string msg = "hello world";
-
+//
 //push msg
 //syscall print
 
+declare const<uint> test = 5;
+
+push 45
+push 45
+push 45
+push 45
 push 5
 exit

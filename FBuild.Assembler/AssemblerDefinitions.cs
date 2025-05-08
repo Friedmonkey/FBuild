@@ -81,6 +81,8 @@ public class AssemblerDefinitions
     {
         type = Types.FirstOrDefault(t => t.name == name || (t.aliases?.Contains(name) ?? false));
         bool success = (type is not null);
+        //if (success)
+        //    type = new Type(type);
         return success;
     }
     public static Type FindType(string name)

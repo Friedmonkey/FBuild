@@ -1,6 +1,7 @@
 ﻿using FBuild.Assembler.Libraries;
 using FBuild.Common;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -68,6 +69,10 @@ public partial class FriedAssembler : AnalizerBase<char>
         Declares = Declares.Where(d => d.used).OrderBy(d => d.value.Count() == 0).ToList();
         declare_size = Declares.FindIndex(d => d.value.Count() == 0); //where empty varibles start
         if (declare_size == -1) declare_size = Declares.Count();
+
+
+        //normalize the declare types
+        NormalizeTypes();
         //basicly sorts the list like this 5,1,6,8,6,0,0,0,0 declare_size is from what point the empty starts,
         //cus we dont need to embed those because we know its value, we can count the amount of empty instead
 
@@ -97,6 +102,26 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         //return input.ToArray();
         return bytes;
+    }
+    public void NormalizeTypes()
+    {
+        //heavent tested this yet1!1!!
+        var typeComparer = new TypeValueEqualityComparer();
+        var canonicalTypes = new Dictionary<Type, Type>(typeComparer);
+
+        foreach (var declare in Declares)
+        {
+            if (declare.type?.value == null) continue;
+            if (canonicalTypes.TryGetValue(declare.type, out var existing))
+            {
+                declare.type = existing; // Reassign to canonical instance
+            }
+            else
+            {
+                canonicalTypes[declare.type] = declare.type;
+            }
+            //var groupedByType = Declares.GroupBy(d => d.type);
+        }
     }
     byte GetSize(Size size)
     {
@@ -535,7 +560,14 @@ public partial class FriedAssembler : AnalizerBase<char>
             if (hasType)
             {
                 if (type.name == "raw") return true;
-                return IsTypeCompatible(checkType.name, type.name);
+                var typename = type.name;
+                if (typename == "constant")
+                {
+                    var subtype = GetSubType(type);
+                    typename = subtype.name;
+                }
+
+                return IsTypeCompatible(checkType.name, typename);
             }
             else
             {
@@ -562,6 +594,12 @@ public partial class FriedAssembler : AnalizerBase<char>
         //    throw new Exception($"Type mismatch, expected \"{type.name}\" but got \"{typename}\" instead!");
         //}
     }
+    public Type GetSubType(Type type)
+    {
+        if (type.value.Count() < 1) throw new Exception("complex type expects a subtype!");
+        var subtype = Types.FirstOrDefault(t => t.value[0] == type.value[1]) ?? throw new Exception($"complex type's subtype:{type.value[1]} not found!");
+        return new Type(subtype);
+    }
     public string ParseArgument() 
     {
         SkipWhitespaceAndComments();
@@ -582,6 +620,19 @@ public partial class FriedAssembler : AnalizerBase<char>
         }
         //it is imidate value
         var newVar = ParseVarible();
+        var existingVar = Declares.FirstOrDefault(existing => 
+        
+            existing.isConst && //only makes sense if we can reuse constants because we know they wont mutate
+            newVar.type.name == existing.type.name && //obviously needs the same type
+            newVar.value.Length == existing.value.Length &&
+            Enumerable.SequenceEqual(newVar.value, existing.value) //also needs same value
+        );
+        if (existingVar is not null)
+        {
+            existingVar.used = true;
+            return existingVar.name;
+        }
+
         newVar.used = true; //aruments are used
         newVar.isConst = true;
         return AddDeclare(newVar);
@@ -1179,6 +1230,14 @@ public partial class FriedAssembler : AnalizerBase<char>
             if (FindStart("declare "))
             {
                 Type type = ConsumeType();
+                bool isConst = false;
+                if (type.name == "constant")
+                { 
+                    var subtype = GetSubType(type);
+                    subtype.value = type.value.Skip(1).ToArray();
+                    type = subtype;
+                    isConst = true;
+                }
                 SkipWhitespaceAndComments();
                 string declareName = ConsumeIdentifier();
                 ExtraConsumingInfo = $"declareName: {declareName}";
@@ -1191,6 +1250,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                     Consume('=');
                     SkipWhitespaceAndComments();
                     var declare = ParseVarible(type, declareName);
+                    declare.isConst = isConst;
                     AddDeclare(declare);
                     Consume(';');
                     //byte b=0;
@@ -1201,7 +1261,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                 else if (Current == ';')
                 {
                     Consume(';');
-                    AddDeclare(new Declare(type, declareName, new byte[0]));
+                    AddDeclare(new Declare(type, declareName, type.default_value) { isConst = isConst});
                 }
                 else
                 {
@@ -1386,9 +1446,31 @@ public partial class FriedAssembler : AnalizerBase<char>
         return success;
     }
     private Type ConsumeType()
-    { 
+    {
         string typename = ConsumeIdentifier();
-        return FindType(typename);
+        var type = FindType(typename);
+
+        if (Current is '[' or '<') //complex type so we kinda clone this to avoid changing from the list
+            type = new Type(type);
+
+        if (Current == '[') //complex type count
+        {
+            Consume('[');
+            var countStr = ConsumeUntil(']');
+            Consume(']');
+
+            var count = int.Parse(countStr);
+            type.value = [.. type.value, .. count.VLQ()];
+        }
+        if (Current == '<') //complex type
+        {
+            Consume('<');
+            var subType = ConsumeType();
+            type.value = [.. type.value, .. subType.value];
+            Consume('>');
+        }
+
+        return type;
     }
     private string ConsumeIdentifier()
     {

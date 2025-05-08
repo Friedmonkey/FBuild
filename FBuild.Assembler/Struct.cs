@@ -16,26 +16,26 @@ public class Struct
     public string name;
     public List<StructField> fields = new();
     public bool used = false;
-    public Type GetType()
-    { 
-        int count = fields.Count;
-        //if (count > byte.MaxValue) throw new Exception("Too many fields");
+    //public Type GetType()
+    //{ 
+    //    int count = fields.Count;
+    //    //if (count > byte.MaxValue) throw new Exception("Too many fields");
 
-        List<byte> bytes = new();
-        bytes.AddRange(count.VLQ());
-        foreach (StructField f in fields)
-        {
-            bytes.AddRange(f.type.value);
-            //bytes.AddRange(f.inital_value);
-        }
-        foreach (StructField f in fields)
-        {
-            bytes.AddRange(f.inital_value);
-        }
-        //bytes.Add((byte)count);
-        //bytes.AddRange(fields.Select(f => (byte)f.size));
-        return new Type("struct", bytes.ToArray()) { structDef = this };
-    }
+    //    List<byte> bytes = new();
+    //    bytes.AddRange(count.VLQ());
+    //    foreach (StructField f in fields)
+    //    {
+    //        bytes.AddRange(f.type.value);
+    //        //bytes.AddRange(f.inital_value);
+    //    }
+    //    foreach (StructField f in fields)
+    //    {
+    //        bytes.AddRange(f.inital_value);
+    //    }
+    //    //bytes.Add((byte)count);
+    //    //bytes.AddRange(fields.Select(f => (byte)f.size));
+    //    return new Type("struct", bytes.ToArray()) { structDef = this };
+    //}
 }
 
 [DebuggerDisplay("{name}:{value}")]

@@ -182,6 +182,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         //declare meta
         var groupedByType = Declares.GroupBy(d => d.type);
         Declares = new List<Declare>();
+        var EmbeddedDeclares = new List<Declare>();
         List<string> symbols = new List<string>();
         foreach (var typeGroup in groupedByType)
         {
@@ -215,11 +216,13 @@ public partial class FriedAssembler : AnalizerBase<char>
                     var declaredValue = declared.Where(d => !d.value.SequenceEqual(d.type.default_value));
                     var declaredDefault = declared.Except(declaredValue);
 
+                    EmbeddedDeclares.AddRange(declaredValue);
+                    Declares.AddRange(declaredDefault);
                     Declares.AddRange(declaredValue);
                     if (includeSymbols)
                     {
-                        symbols.AddRange(declaredValue.Select(d => d.name));
                         symbols.AddRange(declaredDefault.Select(d => d.name));
+                        symbols.AddRange(declaredValue.Select(d => d.name));
                     }
 
                     AppendBytes(declaredDefault.Count().VLQ());
@@ -236,7 +239,7 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         constPoolHeaderPos = byteCount;
         //declare values/const pool
-        foreach (var declare in Declares)
+        foreach (var declare in EmbeddedDeclares)
         {
             if (declare.type.value.Count() > 1)
             {
@@ -355,6 +358,8 @@ public partial class FriedAssembler : AnalizerBase<char>
         {
             TypeCheck("string");
             string str = ConsumeString();
+            //var len = ;
+            //bytes.AddRange(str.Length.VLQ());
             foreach (byte b in str) bytes.Add(b);
         }
         else if (Current == '\'') //char
@@ -477,25 +482,25 @@ public partial class FriedAssembler : AnalizerBase<char>
             else if (syscalls.IfContains(varName.ToUpper(), out extraBytes))
             {
                 TypeCheck("uint");
-                name ??= "idx_"+varName.ToUpper();
+                name ??= "idx_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (math_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
                 TypeCheck("uint");
-                name ??= "idx_"+varName.ToUpper();
+                name ??= "idx_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (compare_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
                 TypeCheck("uint");
-                name ??= "idx_"+varName.ToUpper();
+                name ??= "idx_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (buffer_modes.IfContains(varName.ToUpper(), out extraBytes))
-            { 
+            {
                 TypeCheck("uint");
-                name ??= "idx_"+varName.ToUpper();
+                name ??= "idx_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             //else if (Labels.ContainsKey(varName))
@@ -538,6 +543,28 @@ public partial class FriedAssembler : AnalizerBase<char>
                 throw new Exception($"Unable to index into field:{field} on {varName} because {varName} was not a struct!");
             }
         }
+        else if (Current is '[') //do arrays
+        {
+            var arrayType = GetSubType(type);
+            var count = 0;
+
+            Consume('[');
+            while (Current != ']')
+            {
+                var item = ParseVarible(arrayType, "_arrayThrowaway");
+                count++;
+                bytes.AddRange(item.GetValue());
+
+                SkipWhitespaceAndComments();
+
+                if (Current is ',')
+                    Consume(',');
+                else break;
+            }
+            Consume(']');
+
+        }
+        else throw new Exception($"Got {Current} which doesnt translate to any varible");
         if (!hasType)
             throw new Exception("to type given :((((");
 
@@ -563,7 +590,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                 var typename = type.name;
                 if (typename == "constant")
                 {
-                    var subtype = GetSubType(type);
+                    var subtype = GetSubTypeReadonly(type);
                     typename = subtype.name;
                 }
 
@@ -594,11 +621,16 @@ public partial class FriedAssembler : AnalizerBase<char>
         //    throw new Exception($"Type mismatch, expected \"{type.name}\" but got \"{typename}\" instead!");
         //}
     }
-    public Type GetSubType(Type type)
+    public Type GetSubTypeReadonly(Type type)
     {
         if (type.value.Count() < 1) throw new Exception("complex type expects a subtype!");
-        var subtype = Types.FirstOrDefault(t => t.value[0] == type.value[1]) ?? throw new Exception($"complex type's subtype:{type.value[1]} not found!");
-        return new Type(subtype);
+        return Types.FirstOrDefault(t => t.value[0] == type.value[1]) ?? throw new Exception($"complex type's subtype:{type.value[1]} not found!");
+    }
+    public Type GetSubType(Type type)
+    {
+        var subtype = new Type(GetSubTypeReadonly(type));
+        subtype.value = type.value.Skip(1).ToArray();
+        return subtype;
     }
     public string ParseArgument() 
     {
@@ -1234,7 +1266,6 @@ public partial class FriedAssembler : AnalizerBase<char>
                 if (type.name == "constant")
                 { 
                     var subtype = GetSubType(type);
-                    subtype.value = type.value.Skip(1).ToArray();
                     type = subtype;
                     isConst = true;
                 }

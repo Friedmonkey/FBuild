@@ -3,11 +3,51 @@
 //push msg
 //syscall print
 
-declare const<uint> test = 5;
+//declare const<uint> test = 5;
+//
+//push 45
+//push 45
+//push 45
+//push 45
+//push 5
+//syscall dump
+//push 0
+//exit
 
-push 45
-push 45
-push 45
-push 45
-push 5
+
+
+//declare uint one = 1;
+//declare uint two = 2;
+//declare uint three = 3;
+//declare uint four = 4;
+//declare uint five = 5;
+//declare uint zero;
+//declare uint zero2;
+//declare uint zero3;
+//
+//push three
+//exit
+
+//push one
+//push two
+//push three
+//push four
+//push five
+//push zero
+//push zero2
+//push zero3
+
+
+//declare int a = 5;
+
+declare string hello = "hello world";
+declare array<array<char>> abc = [['a'],['b'],['c']];
+
+push abc
+push hello
+syscall print
+
+push 20
+push 50
+math add
 exit

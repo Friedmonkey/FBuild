@@ -40,18 +40,33 @@
 
 //declare int a = 5;
 
-declare string hello = "hello world";
 //declare array<array<char>> abc = [['a'],['b'],['c']];
-jump sayHello
+declare string hello = "hello world";
+
+jump start
+
+:end
+push 0
+exit
+
+:start
 push 20
 push 50
 math add
-jump end
+jump sayHello
 
 :sayHello
-push hello
+//push hello
 syscall print
-:end
-exit
+jump end
 
+//
 //push abc
+
+//declare string hello = "hello world";
+//
+//push 55
+//push 555
+//push 123456789
+//push hello
+//syscall dump

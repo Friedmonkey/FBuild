@@ -83,10 +83,11 @@ public partial class FriedAssembler : AnalizerBase<char>
         //UpdateAndReset();
 
         bool hasSymbols = true;
+        bool compact = true;
         if (Declares.Count() == 0)
             hasSymbols = false;
         var MetaSize = MaxDeclareSize.GetAmountOfBytesNeeded();
-        input = FinalGenerator(hasSymbols, 1);
+        input = FinalGenerator(hasSymbols, compact, 1);
         UpdateAndReset();
 
         //convert string like "20 54 6A" to actual bytes
@@ -132,20 +133,21 @@ public partial class FriedAssembler : AnalizerBase<char>
             _ => throw new NotSupportedException()
         };
     }
-    private byte PackVersion(bool includeSymbols, byte version)
+    private byte PackVersion(bool includeSymbols, bool compact, byte version)
     {
         // Ensure version does not exceed 1 bit
-        version &= 0b01111111;
+        version &= 0b00111111;
 
         // Pack all fields into a single byte
         byte versionByte = (byte)(
             (includeSymbols ? 0b10000000 : 0) | // IncludeSymbols: add second bit
-            (version & 0b01111111)           // Version: mask lower bit
+            (compact ? 0b01000000 : 0) | // IncludeSymbols: add second bit
+            (version & 0b00111111)           // Version: mask lower bit
         );
 
         return versionByte;
     }
-    private string FinalGenerator(bool includeSymbols, byte version)
+    private string FinalGenerator(bool includeSymbols, bool compact, byte version)
     {
         const string instructionHeader = "%instructionHeader%";
         const string constPoolHeader = "%constPoolHeader%";
@@ -162,7 +164,7 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         // Add the magic "FXE" in byte format
         sb.Append("FXE".ToByteString()); // Converts "FXE" to hex (e.g., "46 58 45")
-        sb.Append(PackVersion(includeSymbols, version).ToByteString());
+        sb.Append(PackVersion(includeSymbols, compact, version).ToByteString());
         byteCount += 4;//magic
 
         sb.Append(instructionHeader);
@@ -252,12 +254,39 @@ public partial class FriedAssembler : AnalizerBase<char>
         if (includeSymbols)
         { 
             symbolHeaderPos = byteCount;
+            int skipCount = 0;
             foreach (string symbol in symbols)
-            { 
+            {
+                if (symbol.StartsWith('_'))
+                {
+                    skipCount++;
+                    continue;
+                }
+                else
+                { 
+                    CheckSkips();
+                }
+
                 sb.Append(symbol.ToByteString());
                 byteCount += symbol.Length;
                 sb.Append(((byte)0xBB).ToByteString()); //symbol split char, needs to be appended
                 byteCount++;
+            }
+            CheckSkips();
+
+            void CheckSkips()
+            {
+                if (skipCount > 0)
+                {   //add bunch of skipped
+                    sb.Append(((byte)'_').ToByteString()); //underscore
+                    byteCount++;
+
+                    AppendBytes(skipCount.VLQ());
+
+                    sb.Append(((byte)0xBB).ToByteString()); //symbol split char, needs to be appended
+                    byteCount++;
+                    skipCount = 0;
+                }
             }
         }
 
@@ -480,25 +509,25 @@ public partial class FriedAssembler : AnalizerBase<char>
             else if (syscalls.IfContains(varName.ToUpper(), out extraBytes))
             {
                 TypeCheck("uint");
-                name ??= "idx_" + varName.ToUpper();
+                name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (math_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
                 TypeCheck("uint");
-                name ??= "idx_" + varName.ToUpper();
+                name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (compare_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
                 TypeCheck("uint");
-                name ??= "idx_" + varName.ToUpper();
+                name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (buffer_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
                 TypeCheck("uint");
-                name ??= "idx_" + varName.ToUpper();
+                name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             //else if (Labels.ContainsKey(varName))

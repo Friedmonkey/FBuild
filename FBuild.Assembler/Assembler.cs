@@ -105,7 +105,6 @@ public partial class FriedAssembler : AnalizerBase<char>
     }
     public void NormalizeTypes()
     {
-        //heavent tested this yet1!1!!
         var typeComparer = new TypeValueEqualityComparer();
         var canonicalTypes = new Dictionary<Type, Type>(typeComparer);
 
@@ -120,7 +119,6 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 canonicalTypes[declare.type] = declare.type;
             }
-            //var groupedByType = Declares.GroupBy(d => d.type);
         }
     }
     byte GetSize(Size size)
@@ -359,7 +357,7 @@ public partial class FriedAssembler : AnalizerBase<char>
             TypeCheck("string");
             string str = ConsumeString();
             //var len = ;
-            //bytes.AddRange(str.Length.VLQ());
+            bytes.AddRange(str.Length.VLQ());
             foreach (byte b in str) bytes.Add(b);
         }
         else if (Current == '\'') //char

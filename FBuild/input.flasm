@@ -41,13 +41,13 @@
 //declare int a = 5;
 
 declare string hello = "hello world";
-declare array<array<char>> abc = [['a'],['b'],['c']];
-
-push abc
-push hello
-syscall print
+//declare array<array<char>> abc = [['a'],['b'],['c']];
 
 push 20
 push 50
 math add
+
+//push abc
+push hello
+syscall print
 exit

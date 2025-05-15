@@ -42,12 +42,16 @@
 
 declare string hello = "hello world";
 //declare array<array<char>> abc = [['a'],['b'],['c']];
-
+jump sayHello
 push 20
 push 50
 math add
+jump end
 
-//push abc
+:sayHello
 push hello
 syscall print
+:end
 exit
+
+//push abc

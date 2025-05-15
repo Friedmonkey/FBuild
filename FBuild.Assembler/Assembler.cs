@@ -1309,7 +1309,7 @@ public partial class FriedAssembler : AnalizerBase<char>
     private string AddDeclare(Declare declare)
     {
 #warning this is terrible, if we dont use it why set it to the max size, this will need to be done later
-        if ((UInt64)declare.value.Count() > MaxDeclareSize)
+        if ((UInt64)(declare.value?.Count()??0) > MaxDeclareSize)
             MaxDeclareSize = (UInt64)declare.value.Count();
 
         logger?.LogDetail($"declare {declare.name} was added");

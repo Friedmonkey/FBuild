@@ -41,24 +41,29 @@
 //declare int a = 5;
 
 //declare array<array<char>> abc = [['a'],['b'],['c']];
-declare string hello = "hello world";
+//declare string hello = "hello world";
 
-jump start
+//jump start
 
-:end
-push 0
-exit
+//:end
+//push 0
+//exit
 
-:start
-push 20
-push 50
-math add
-jump sayHello
+//:start
+//push 20
+//push 50
+//math add
+//jump sayHello
 
-:sayHello
-//push hello
-syscall print
-jump end
+//:sayHello
+////push hello
+//syscall print
+//jump end
+
+
+
+//push 5
+//exit
 
 //
 //push abc
@@ -70,3 +75,23 @@ jump end
 //push 123456789
 //push hello
 //syscall dump
+
+//declare int exitCode = 10;
+//declare string msg = "hello world";
+
+//set_buffer msg
+//buffer_util REMOVE_FROM_END
+//get_buffer msg
+//push msg
+//syscall print
+
+
+//push exitCode
+//push u32 4
+//math sub
+//exit
+
+push 0_.____5f
+
+push 5
+exit

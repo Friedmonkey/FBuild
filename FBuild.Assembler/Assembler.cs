@@ -11,6 +11,7 @@ using System.Text;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using static FBuild.Assembler.AssemblerDefinitions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FBuild.Assembler;
 
@@ -437,52 +438,129 @@ public partial class FriedAssembler : AnalizerBase<char>
             byte result = Convert.ToByte(binaryText, 2); // Convert binary to byte
             bytes.Add(result);
         }
-        else if (Current is '-')
+        else if (Current is '-' || char.IsDigit(Current))
         {
-            TypeCheck("int32");
-            Consume('-');
-            if (char.IsDigit(Current)) //signed negative number
-            {
-                string numberText = "-";
-
-                while (char.IsDigit(Current))
-                {
-                    numberText += Current;
-                    Position++;
-                }
-
-                //if (char.IsAsciiLetter(Current))
-                //{
-                //    string shortType = ConsumeIdentifier();
-                //}
-
-                //convert string to integer
-                if (!int.TryParse(numberText, out int number))
-                    throw new FormatException($"Invalid number format: {numberText}");
-
-                // make bytes
-                bytes.AddRange(number.ToByteArrayWithNegative());
-            }
-            else throw new Exception($"unexpected character trying to parse signed number {CurrentlyConsuming} {ExtraConsumingInfo}");
-        }
-        else if (char.IsDigit(Current)) //normal numbers
-        {
-            TypeCheck("uint32");
             string numberText = "";
 
-            while (char.IsDigit(Current))
+            if (Current == '-')
             {
+                Consume('-');
+                numberText += '-';
+            }
+
+            while (char.IsDigit(Current) || Current == '_' || Current == '.')
+            {
+                if (Current == '_')
+                {
+                    // just skip underscores, don’t add to numberText
+                    Position++;
+                    continue;
+                }
+
+                if (Current == '.')
+                {
+                    if (numberText.Contains('.'))
+                        throw new FormatException("Invalid number: multiple decimal points");
+                }
+
                 numberText += Current;
                 Position++;
             }
 
-            //convert string to integer
-            if (!uint.TryParse(numberText, out uint number))
-                throw new FormatException($"Invalid number format: {numberText}");
+            string postfix = ""; //when its like 12u8 the postfix would be u8
+            while (char.IsLetter(Current) || char.IsDigit(Current))
+            {
+                postfix += Current;
+                Position++;
+            }
 
-            // make bytes
-            bytes.AddRange(number.ToByteArrayUnsigned());
+            //postfix doesnt matter if we already have a type?
+            if (!hasType)
+            {
+                if (string.IsNullOrEmpty(postfix))
+                    type = FindType("int32"); //default to int32
+                else
+                {
+                    if (!ShortTypes.TryGetValue(postfix, out string postfixTypeName))
+                        throw new Exception("unknown postfix:" + postfix);
+                    type = FindType(postfixTypeName);
+                }
+                hasType = true;
+            }
+
+            if (!NumberProperties.TryGetValue(type.name, out var numProps))
+            {
+                throw new Exception("Needs to be a number type!!1!");
+            }
+            //we definitly have a type now
+            //convert our text into our type (as byte array) (with the correct length for said type)
+            //bool isSigned = numProps.isSigned;
+            //bool isFloat = numProps.isFloat;
+            //int size = type.size ?? throw new Exception($"Type {type.name} has no size defined");
+
+            byte[] literalBytes = type.name switch
+            {
+                "int8" => new[] { (byte)checked(sbyte.Parse(numberText)) },
+                "uint8" => new[] { byte.Parse(numberText) },
+                "int16" => BitConverter.GetBytes(checked(short.Parse(numberText))),
+                "uint16" => BitConverter.GetBytes(ushort.Parse(numberText)),
+                "int32" => BitConverter.GetBytes(checked(int.Parse(numberText))),
+                "uint32" => BitConverter.GetBytes(uint.Parse(numberText)),
+                "int64" => BitConverter.GetBytes(checked(long.Parse(numberText))),
+                "uint64" => BitConverter.GetBytes(ulong.Parse(numberText)),
+                "float32" => BitConverter.GetBytes(float.Parse(numberText)),
+                "float64" => BitConverter.GetBytes(double.Parse(numberText)),
+                _ => throw new Exception($"Unsupported numeric type {type.name}")
+            };
+
+            bytes.AddRange(literalBytes);
         }
+        //else if (Current is '-')
+        //{
+        //    TypeCheck("int32");
+        //    Consume('-');
+        //    if (char.IsDigit(Current)) //signed negative number
+        //    {
+        //        string numberText = "-";
+
+        //        while (char.IsDigit(Current))
+        //        {
+        //            numberText += Current;
+        //            Position++;
+        //        }
+
+        //        //if (char.IsAsciiLetter(Current))
+        //        //{
+        //        //    string shortType = ConsumeIdentifier();
+        //        //}
+
+        //        //convert string to integer
+        //        if (!int.TryParse(numberText, out int number))
+        //            throw new FormatException($"Invalid number format: {numberText}");
+
+        //        // make bytes
+        //        bytes.AddRange(number.ToByteArrayWithNegative());
+        //    }
+        //    else throw new Exception($"unexpected character trying to parse signed number {CurrentlyConsuming} {ExtraConsumingInfo}");
+        //}
+        //else if (char.IsDigit(Current)) //normal numbers
+        //{
+        //    TypeCheck("uint32");
+        //    string numberText = "";
+
+        //    while (char.IsDigit(Current))
+        //    {
+        //        numberText += Current;
+        //        Position++;
+        //    }
+
+        //    //convert string to integer
+        //    if (!uint.TryParse(numberText, out uint number))
+        //        throw new FormatException($"Invalid number format: {numberText}");
+
+        //    // make bytes
+        //    bytes.AddRange(number.ToByteArrayUnsigned());
+        //}
         else if (Current.IsVarible()) //either label/address or meta/varible/declare
         {
             byte[] extraBytes = null;

@@ -49,7 +49,8 @@ public class AssemblerDefinitions
     };
     public static Dictionary<string, string> ShortTypes = new Dictionary<string, string>() 
     {
-        { "u",  "uint32"},  
+        { "b",  "uint8"},
+        { "u",  "uint32"},
         { "ul", "uint64"}, 
         //{ "",   "int32"}, //no specifier means int32 by default (but this is context specific)
         { "l",  "int64"},  
@@ -77,6 +78,22 @@ public class AssemblerDefinitions
         { "array",          []},
         { "pointer",        []},
     };
+
+    // somewhere in your parser class
+    public static readonly Dictionary<string, (bool isSigned, bool isFloat)> NumberProperties = new()
+    {
+        ["int8"] = (true, false),
+        ["int16"] = (true, false),
+        ["int32"] = (true, false),
+        ["int64"] = (true, false),
+        ["uint8"] = (false, false),
+        ["uint16"] = (false, false),
+        ["uint32"] = (false, false),
+        ["uint64"] = (false, false),
+        ["float32"] = (true, true),
+        ["float64"] = (true, true),
+    };
+
     public static bool TryGetType(string name, out Type type)
     {
         type = Types.FirstOrDefault(t => t.name == name || (t.aliases?.Contains(name) ?? false));

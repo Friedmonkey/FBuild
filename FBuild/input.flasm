@@ -91,7 +91,27 @@
 //math sub
 //exit
 
-push 0_.____5f
+//push 0_.____5f
 
-push 5
+//push 5
+//exit
+
+
+
+//example program that actually works (gets compiled to 95 bytes, this code in text form is 186 bytes)
+declare string name;
+
+push string "Enter your name:"
+syscall print
+
+push name
+syscall read
+
+push string "your name is:"
+syscall print
+
+push name
+syscall print
+
+push 0
 exit

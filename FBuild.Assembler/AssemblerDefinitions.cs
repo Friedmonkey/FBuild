@@ -27,25 +27,26 @@ public class AssemblerDefinitions
         new Type("raw",             size:null, [0x00]),
         new Type("string",          size:null, [0x01]),
 
-        new Type("uint8",           size:1,    [0x10], "char",   "byte", "u8"),
-        new Type("uint16",          size:2,    [0x12], "ushort", "u16"),
-        new Type("uint32",          size:4,    [0x13], "uint",   "u32"),
-        new Type("uint64",          size:8,    [0x14], "ulong",  "u64"),
-        new Type("int8",            size:1,    [0x15], "sbyte",  "i8"),
-        new Type("int16",           size:2,    [0x16], "short",  "i16"),
-        new Type("int32",           size:4,    [0x17], "int",    "i32"),
-        new Type("int64",           size:8,    [0x18], "long",   "i64"),
-        new Type("float32",         size:4,    [0x19], "float",  "f32"),
-        new Type("float64",         size:8,    [0x1A], "double", "f64"),
+        new Type("lazy",            size:null, [0x0A]),
+        new Type("constant",        size:null, [0x0B], "const"),
+        new Type("complex_type",    size:null, [0x0C]),
+        new Type("struct",          size:null, [0x0D]),
+        new Type("array",           size:null, [0x0E]),
+        new Type("pointer",         size:null, [0x0F]),
+        
+        new Type("label",           size:null, [0x10]), //will be 0B once const is fully gone
 
-        new Type("label",           size:null, [0xE0]),
+        new Type("uint8",           size:1,    [0x20], "char",   "byte", "u8"),
+        new Type("uint16",          size:2,    [0x22], "ushort", "u16"),
+        new Type("uint32",          size:4,    [0x23], "uint",   "u32"),
+        new Type("uint64",          size:8,    [0x24], "ulong",  "u64"),
+        new Type("int8",            size:1,    [0x25], "sbyte",  "i8"),
+        new Type("int16",           size:2,    [0x26], "short",  "i16"),
+        new Type("int32",           size:4,    [0x27], "int",    "i32"),
+        new Type("int64",           size:8,    [0x28], "long",   "i64"),
+        new Type("float32",         size:4,    [0x29], "float",  "f32"),
+        new Type("float64",         size:8,    [0x2A], "double", "f64"),
 
-        new Type("lazy",            size:null, [0xFA]),
-        new Type("constant",        size:null, [0xFB], "const"),
-        new Type("complex_type",    size:null, [0xFC]),
-        new Type("struct",          size:null, [0xFD]),
-        new Type("array",           size:null, [0xFE]),
-        new Type("pointer",         size:null, [0xFF]),
     };
     public static Dictionary<string, string> ShortTypes = new Dictionary<string, string>() 
     {

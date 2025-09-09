@@ -183,72 +183,91 @@ public partial class FriedAssembler : AnalizerBase<char>
         //declare meta
         var groupedByType = Declares.GroupBy(d => d.type);
         Declares = new List<Declare>();
+        //from this point onwards Declares are basicly only used for indexing purposes
+
         var EmbeddedDeclares = new List<Declare>();
         List<string> symbols = new List<string>();
         foreach (var typeGroup in groupedByType)
         {
-            var declaredConst = typeGroup.Where(d => d.isConst).ToList();
-            var declaredVar = typeGroup.Where(d => !d.isConst).ToList();
+            IEnumerable<Declare> declared = typeGroup;
+            Type type = typeGroup.Key;
 
-            AppendDeclared(declaredConst, isConst:true);
-            AppendDeclared(declaredVar, isConst:false);
+            if (!declared.Any())
+                continue;
+            //var declaredConst = typeGroup.Where(d => d.isConst).ToList();
+            //var declaredVar = typeGroup.Where(d => !d.isConst).ToList();
 
-            void AppendDeclared(IEnumerable<Declare> declared, bool isConst)
-            { 
-                if (declared.Any())
-                {
-                    if (isConst)
-                        AppendBytes(FindType("constant").value);
-                    AppendBytes(typeGroup.Key.value);
+            //AppendDeclared(declaredConst, isConst:true);
+            //AppendDeclared(declaredVar, isConst:false);
 
-                    if (includeSymbols && typeGroup.Key.structDef is not null) //its struct
-                    {   //struct may contain more identifiers
-                        Struct structDef = typeGroup.Key.structDef;
-                        symbols.Add(structDef.name);
-                        symbols.AddRange(structDef.fields.Select(f => f.name));
-                    }
-
-                    //var declaredDefault = declared.Where(d => );
-                    //var declaredValue = declared.Except(declaredDefault);
-
-                    //Declares.AddRange(declaredDefault);
-                    //Declares.AddRange(declaredValue);
-
-                    var declaredValue = declared.Where(d => !d.value.SequenceEqual(d.type.default_value)).ToList();
-                    //var declaredValue = declared.Where(d => !ArrayAreEqual(d.value, d.type.default_value)).ToList();
-                    var declaredDefault = declared.Except(declaredValue).ToList();
-
-                    EmbeddedDeclares.AddRange(declaredValue);
-                    Declares.AddRange(declaredDefault);
-                    Declares.AddRange(declaredValue);
-                    if (includeSymbols)
-                    {
-                        symbols.AddRange(declaredDefault.Select(d => d.name));
-                        symbols.AddRange(declaredValue.Select(d => d.name));
-                    }
-
-                    AppendBytes(declaredDefault.Count().VLQ());
-                    AppendBytes(declaredValue.Count().VLQ());
-
-                    //bool ArrayAreEqual(byte[] arr1, byte[] arr2)
-                    //{
-                    //    if (arr1.Length != arr2.Length)
-                    //    {
-                    //        return false;
-                    //    }
-                    //    int length = arr1.Length;
-                    //    for (int i = 0; i < length; i++)
-                    //    {
-                    //        if (arr1[i] != arr2[i])
-                    //        {
-                    //            return false;
-                    //        }
-                    //    }
-
-                    //    return true;
-                    //}
-                }
+            //void AppendDeclared(IEnumerable<Declare> declared, bool isConst)
+            bool hasConst = (declared.Any(d => d.isConst));
+            if (hasConst)
+            {
+                var bytes = type.value.ToList();
+                byte constFirstByte = (byte)(bytes[0] | ConstantBitFlag);
+                bytes[0] = constFirstByte;
+                AppendBytes(bytes.ToArray());
             }
+            else
+            { 
+                AppendBytes(type.value);
+                        
+            }
+
+            if (includeSymbols && type.structDef is not null) //its struct
+            {   //struct may contain more identifiers
+                Struct structDef = type.structDef;
+                symbols.Add(structDef.name);
+                symbols.AddRange(structDef.fields.Select(f => f.name));
+            }
+
+            //var declaredDefault = declared.Where(d => );
+            //var declaredValue = declared.Except(declaredDefault);
+
+            //Declares.AddRange(declaredDefault);
+            //Declares.AddRange(declaredValue);
+
+            var mutableDeclares = declared.Where(d => !d.isConst);
+
+            var declaredValue = mutableDeclares.Where(d => !d.value.SequenceEqual(d.type.default_value));
+            var declaredDefault = mutableDeclares.Except(declaredValue);
+            IEnumerable<Declare> declaredConst = new List<Declare>();
+            if (hasConst)
+            {
+                declaredConst = declared.Except(mutableDeclares);
+            }
+
+            EmbeddedDeclares.AddRange(declaredValue);
+            EmbeddedDeclares.AddRange(declaredConst);
+
+            Declares.AddRange(declaredDefault);
+            Declares.AddRange(declaredValue);
+            if (hasConst)
+            {
+                //if a type has const enabled then we add a single default for this const
+                //as we only need 1 because its const and it wont change
+                //neither will it be embedded in the binary since the VM also knows this
+
+                //empty declare because it technicly exists right here but wont be embedded
+                //but its added for indexing purposes
+                var singleDefaultconst = new Declare(type, "_const_"+type.name); 
+
+                Declares.Add(singleDefaultconst);
+                Declares.AddRange(declaredConst);
+            }
+            if (includeSymbols)
+            {
+                symbols.AddRange(declaredDefault.Select(d => d.name));
+                symbols.AddRange(declaredValue.Select(d => d.name));
+                symbols.Add("_const_" + type.name);
+                symbols.AddRange(declaredConst.Select(d => d.name));
+            }
+
+            AppendBytes(declaredDefault.Count().VLQ());
+            AppendBytes(declaredValue.Count().VLQ());
+            if (hasConst)
+                AppendBytes(declaredConst.Count().VLQ());
         }
         instructionHeaderPos = byteCount;
         //append instructions
@@ -296,6 +315,7 @@ public partial class FriedAssembler : AnalizerBase<char>
 
             void CheckSkips()
             {
+#warning todo optimize this so when it only skips 1 its just _ and not _1 saving 1 byte in the end
                 if (skipCount > 0)
                 {   //add bunch of skipped
                     sb.Append(((byte)'_').ToByteString()); //underscore
@@ -605,25 +625,25 @@ public partial class FriedAssembler : AnalizerBase<char>
             }
             else if (syscalls.IfContains(varName.ToUpper(), out extraBytes))
             {
-                TypeCheck("uint");
+                TypeCheck("uint8");
                 name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (math_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
-                TypeCheck("uint");
+                TypeCheck("uint8");
                 name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (compare_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
-                TypeCheck("uint");
+                TypeCheck("uint8");
                 name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
             else if (buffer_modes.IfContains(varName.ToUpper(), out extraBytes))
             {
-                TypeCheck("uint");
+                TypeCheck("uint8");
                 name ??= "_" + varName.ToUpper();
                 bytes.AddRange(extraBytes);
             }
@@ -700,7 +720,7 @@ public partial class FriedAssembler : AnalizerBase<char>
             if (checkTypeName == typeName)
                 return true;
 
-            if (CompatibleTypes[checkTypeName].Contains(typeName))
+            if (CompatibleTypes[typeName].Contains(checkTypeName))
                 return true;
 
             return false;
@@ -712,11 +732,11 @@ public partial class FriedAssembler : AnalizerBase<char>
             {
                 if (type.name == "raw") return true;
                 var typename = type.name;
-                if (typename == "constant")
-                {
-                    var subtype = GetSubTypeReadonly(type);
-                    typename = subtype.name;
-                }
+                //if (typename == "constant")
+                //{
+                //    var subtype = GetSubTypeReadonly(type);
+                //    typename = subtype.name;
+                //}
 
                 return IsTypeCompatible(checkType.name, typename);
             }
@@ -1385,14 +1405,14 @@ public partial class FriedAssembler : AnalizerBase<char>
             }
             if (FindStart("declare "))
             {
-                Type type = ConsumeType();
                 bool isConst = false;
-                if (type.name == "constant")
-                { 
-                    var subtype = GetSubType(type);
-                    type = subtype;
+                if (Find("const") || Find("constant"))
+                {
                     isConst = true;
+                    SkipWhitespaceAndComments();
                 }
+
+                Type type = ConsumeType();
                 SkipWhitespaceAndComments();
                 string declareName = ConsumeIdentifier();
                 ExtraConsumingInfo = $"declareName: {declareName}";

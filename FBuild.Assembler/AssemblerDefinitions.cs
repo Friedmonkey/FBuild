@@ -22,19 +22,20 @@ public class AssemblerDefinitions
             strings.Add(item.ToUpper(),0);
     }
 #endif
+    public const byte ConstantBitFlag = 0b1000_0000;
     public static List<Type> Types = new List<Type>()
     { 
         new Type("raw",             size:null, [0x00]),
         new Type("string",          size:null, [0x01]),
 
         new Type("lazy",            size:null, [0x0A]),
-        new Type("constant",        size:null, [0x0B], "const"),
+        //new Type("constant",        size:null, [0x0B], "const"),
+        new Type("label",           size:null, [0x0B]),
         new Type("complex_type",    size:null, [0x0C]),
         new Type("struct",          size:null, [0x0D]),
         new Type("array",           size:null, [0x0E]),
         new Type("pointer",         size:null, [0x0F]),
         
-        new Type("label",           size:null, [0x10]), //will be 0B once const is fully gone
 
         new Type("uint8",           size:1,    [0x20], "char",   "byte", "u8"),
         new Type("uint16",          size:2,    [0x22], "ushort", "u16"),
@@ -73,7 +74,6 @@ public class AssemblerDefinitions
         { "float32",        []},
         { "float64",        ["float32"]},
         { "label",          []},
-        { "constant",       []},
         { "complex_type",   []},
         { "struct",         []},
         { "array",          []},

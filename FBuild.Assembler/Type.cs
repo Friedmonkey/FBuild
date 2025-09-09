@@ -20,6 +20,9 @@ public class Type
         this.name = name;
         this.value = value;
         this.aliases = aliases;
+
+        if (size != null)
+            this.default_value = new byte[(int)size];
     }
     public int? size;
     public string name;

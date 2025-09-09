@@ -98,20 +98,47 @@
 
 
 
-//example program that actually works (gets compiled to 95 bytes, this code in text form is 186 bytes)
-declare string name;
+////example program that actually works (gets compiled to 95 bytes, this code in text form is 186 bytes)
+//declare string name;
+//
+//push string "Enter your name:"
+//syscall print
+//
+//push name
+//syscall read
+//
+//push string "your name is:"
+//syscall print
+//
+//push name
+//syscall print
+//
+//push 0
+//exit
 
-push string "Enter your name:"
-syscall print
+//declare int a = 500;
+//declare int b = 25;
+//
+//
+//push a
+//push b
+//
+//math div
+//
+//exit
 
-push name
-syscall read
 
-push string "your name is:"
-syscall print
+//declare byte a = 50;
+//declare byte ad = add;
+//
+//push add
+//exit
 
-push name
-syscall print
+//inline declares dont get omitted to default when using 0 as its value
 
-push 0
+
+//declare int a = 0;
+
+//push 0 //doesnt get turned into default declare but const with value 0 (the default)
+push a //correctly gets omited from output binary because a has 0 which is default
 exit

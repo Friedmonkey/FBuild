@@ -234,8 +234,8 @@ public partial class FriedAssembler : AnalizerBase<char>
             var declaredDefault = mutableDeclares.Except(declaredValue);
             IEnumerable<Declare> declaredConst = new List<Declare>();
             if (hasConst)
-            {
-                declaredConst = declared.Except(mutableDeclares);
+            {   //only get the const that have no default value
+                declaredConst = declared.Except(mutableDeclares).Where(d => !d.value.SequenceEqual(d.type.default_value));
             }
 
             EmbeddedDeclares.AddRange(declaredValue);
@@ -811,6 +811,10 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         newVar.used = true; //aruments are used
         newVar.isConst = true;
+        if (newVar.value.SequenceEqual(newVar.type.default_value))
+        {   //if we are adding a const value that is the default just use the const default
+            newVar.name = "_const_"+newVar.type.name;
+        }
         return AddDeclare(newVar);
     }
     //public List<byte> ParseBytes(out string address, out bool isReference, ref byte min_arg_size)
@@ -1304,6 +1308,7 @@ public partial class FriedAssembler : AnalizerBase<char>
         foreach (var arg in instruction.args)
         {
             var idx = GetDeclareIndex(arg);
+            if (idx == -1) throw new Exception($"Varible \"{arg}\" not found!");
             bytes.AddRange(idx.VLQ());
         }
         return bytes.ToArray();

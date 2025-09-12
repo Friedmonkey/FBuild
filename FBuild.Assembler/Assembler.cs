@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -547,8 +548,8 @@ public partial class FriedAssembler : AnalizerBase<char>
                 "uint32" => BitConverter.GetBytes(uint.Parse(numberText)),
                 "int64" => BitConverter.GetBytes(checked(long.Parse(numberText))),
                 "uint64" => BitConverter.GetBytes(ulong.Parse(numberText)),
-                "float32" => BitConverter.GetBytes(float.Parse(numberText)),
-                "float64" => BitConverter.GetBytes(double.Parse(numberText)),
+                "float32" => BitConverter.GetBytes(float.Parse(numberText, CultureInfo.InvariantCulture)),
+                "float64" => BitConverter.GetBytes(double.Parse(numberText, CultureInfo.InvariantCulture)),
                 _ => throw new Exception($"Unsupported numeric type {type.name}")
             };
 

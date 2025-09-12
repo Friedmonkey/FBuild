@@ -206,11 +206,31 @@
 //math mul
 //ret
 
+//push 10.5f
+//push 20
+//math mul
+//
+////cast byte typeof(uint32)
+//
+//exit
 
-push 10.5f
-push 20
-math mul
 
-//cast byte typeof(uint32)
+
+//pretty small random number genarator
+//the index for random is 0x09 so thats why i chose 9
+// so we can use 1 byte for the max value and for the random math call
+// we chose zero because it doesnt add a byte because its default value
+
+//we manually declare these so they arent const
+// which wouldve added a single byte
+//if we run in release mode we get 17 bytes for this entire program
+//for reference all the opcodes are combined 16 bytes
+// (push, push, math, exit)
+//thats without data or header so 17 bytes is pretty good
+declare uint8 zero = 0;
+declare uint8 nine = rand;
+push zero
+push nine
+math nine
 
 exit

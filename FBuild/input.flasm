@@ -216,21 +216,51 @@
 
 
 
-//pretty small random number genarator
-//the index for random is 0x09 so thats why i chose 9
-// so we can use 1 byte for the max value and for the random math call
-// we chose zero because it doesnt add a byte because its default value
+////pretty small random number genarator
+////the index for random is 0x09 so thats why i chose 9
+//// so we can use 1 byte for the max value and for the random math call
+//// we chose zero because it doesnt add a byte because its default value
+//
+////we manually declare these so they arent const
+//// which wouldve added a single byte
+////if we run in release mode we get 17 bytes for this entire program
+////for reference all the opcodes are combined 16 bytes
+//// (push, push, math, exit)
+////thats without data or header so 17 bytes is pretty good
+//declare uint8 zero = 0;
+//declare uint8 nine = rand;
+//push zero
+//push nine
+//math nine
+//
+//exit
 
-//we manually declare these so they arent const
-// which wouldve added a single byte
-//if we run in release mode we get 17 bytes for this entire program
-//for reference all the opcodes are combined 16 bytes
-// (push, push, math, exit)
-//thats without data or header so 17 bytes is pretty good
-declare uint8 zero = 0;
-declare uint8 nine = rand;
-push zero
-push nine
-math nine
 
+//pretty cool program that calculates how old you will be in 10 years 
+// gets compiled to 96 bytes (half of that being the strings cus strings always massive)
+declare int age;
+declare string buffer;
+
+push string "Enter your age:"
+syscall print
+
+push buffer
+syscall read
+
+push age
+push buffer
+syscall parse
+
+push string "in 10 years your age will be:"
+syscall print
+
+
+push age
+push 10b
+
+math add
+syscall print
+
+
+push 0b
 exit

@@ -80,7 +80,6 @@ public class AssemblerDefinitions
         { "pointer",        []},
     };
 
-    // somewhere in your parser class
     public static readonly Dictionary<string, (bool isSigned, bool isFloat)> NumberProperties = new()
     {
         ["int8"] = (true, false),
@@ -153,7 +152,8 @@ public class AssemblerDefinitions
         "DUMP",
         "TO_STRING_UNSIGNED",
         "TO_STRING_SIGNED",
-        "TO_NUMBER_UNSIGNED",
+        "PARSE",
+        //"TO_NUMBER_UNSIGNED",
         "TO_NUMBER_SIGNED",
 
         "INPUT_MODE_READ",

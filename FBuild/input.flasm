@@ -279,3 +279,132 @@
 //smallest program (9 bytes in release mode)
 push false
 exit
+
+////number guessing  (asked chatgpt to generate it to see if it understood)
+//declare uint16 secret;
+//declare uint16 guess;
+//declare string buffer;
+//
+//// generate random number 1–100
+//push 1b
+//push 100b
+//math rand
+//
+//push secret
+//set_var
+//
+//:game_loop
+//push string "guess a number (1-100): "
+//syscall print
+//
+//push buffer
+//syscall read
+//
+//push guess
+//push buffer
+//syscall parse
+//
+//// check if guess == secret
+//push guess
+//push secret
+//comp eq
+//jump_if correct
+//
+//// check if guess < secret
+//push guess
+//push secret
+//comp lt
+//jump_if too_low
+//
+//// otherwise it's too high
+//push string "too high!"
+//syscall println
+//jump game_loop
+//
+//:too_low
+//push string "too low!"
+//syscall println
+//jump game_loop
+//
+//:correct
+//push string "nice!! you guessed it :D"
+//syscall println
+//push 0b
+//exit
+//
+
+//asked chatgpt to add a 5 tries before showing (and gave them some tips to make it compile and cleaner)
+
+declare uint16 secret;
+declare uint8 guess;
+declare uint8 attempts = 5;
+declare string buffer;
+
+// generate random number 1–100
+push 1b
+push 100b
+math rand
+
+push secret
+set_var
+
+:game_loop
+// check if attempts == 0 → out of tries
+push attempts
+push 0b
+comp eq
+jump_if out_of_tries
+
+push string "guess a number (1-100): "
+syscall print
+
+push buffer
+syscall read
+
+push guess
+push buffer
+syscall parse
+
+// check if guess == secret
+push guess
+push secret
+comp eq
+jump_if correct
+
+// decrement attempts
+push attempts
+math dec
+push attempts
+set_var
+
+// check if guess < secret
+push guess
+push secret
+comp lt
+jump_if too_low
+
+// otherwise it's too high
+push string "too high!"
+syscall println
+jump game_loop
+
+:too_low
+push string "too low!"
+syscall println
+jump game_loop
+
+:correct
+push string "nice!! you guessed it :D"
+syscall println
+push 0b
+exit
+
+:out_of_tries
+push string "out of tries! the number was: "
+syscall print
+
+push secret
+syscall println
+
+push 1b
+exit

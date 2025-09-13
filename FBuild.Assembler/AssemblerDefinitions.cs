@@ -122,8 +122,8 @@ public class AssemblerDefinitions
         OP("POP",       0),
         OP("DUP",       1),
         OP("MATH",      1),
-        OP("AND",       0),
-        OP("OR",        0),
+        OP("AND",       0),//unused
+        OP("OR",        0),//unused
         OP("NOT",       0),
         OP("COMP",      1),
         OP("JUMP",      1),
@@ -134,14 +134,14 @@ public class AssemblerDefinitions
         OP("SYSCALL",   1),
         OP("EXIT",      0),
 
-        OP("SET_BUFFER",	1),
-        OP("GET_BUFFER",	1),
-        OP("PUSH_BUFFER",	1),
-        OP("BUFFER_UTIL",   1),
+        OP("SET_BUFFER",	1),//unused
+        OP("GET_BUFFER",	1),//unused
+        OP("PUSH_BUFFER",	1),//unused
+        OP("BUFFER_UTIL",   1),//unused
         OP("SET_VAR",       0),
-        OP("SET_STRUCT",    2),
-        OP("GET_STRUCT",    2),
-        OP("CREATE_STRUCT", 2),
+        OP("SET_STRUCT",    2),//unused
+        OP("GET_STRUCT",    2),//unused
+        OP("CREATE_STRUCT", 2),//unused
 
         OP("CHECK_STACK", 1),
     });
@@ -151,19 +151,20 @@ public class AssemblerDefinitions
         "CLEAR_CONSOLE",
         "READ",
         "PRINT",
+        "PRINTLN",
         "DUMP",
-        "TO_STRING_UNSIGNED",
-        "TO_STRING_SIGNED",
+        //"TO_STRING_UNSIGNED",
+        "TO_STRING_SIGNED", //unused
         "PARSE",
         //"TO_NUMBER_UNSIGNED",
-        "TO_NUMBER_SIGNED",
+        "TO_NUMBER_SIGNED",//unused
 
-        "INPUT_MODE_READ",
-        "INPUT_MODE_WRITE",
-        "INPUT_TO_STRUCT",
+        "INPUT_MODE_READ",//unused
+        "INPUT_MODE_WRITE",//unused
+        "INPUT_TO_STRUCT",//unused
 
-        "SET_CONSOLE_CURSOR",
-        "GET_CONSOLE_CURSOR",
+        "SET_CONSOLE_CURSOR",//unused
+        "GET_CONSOLE_CURSOR",//unused
     };
     public static List<string> math_modes = new List<string>()
     {
@@ -173,9 +174,9 @@ public class AssemblerDefinitions
         "DEC",
         "MUL",
         "DIV",
-        "POW",
-        "ROOT",
-        "SQRT",
+        "POW",//unused
+        "ROOT",//unused
+        "SQRT",//unused
         "RAND",
     };
     public static List<string> compare_modes = new List<string>()

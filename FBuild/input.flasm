@@ -236,31 +236,46 @@
 //exit
 
 
-//pretty cool program that calculates how old you will be in 10 years 
-// gets compiled to 96 bytes (half of that being the strings cus strings always massive)
-declare int age;
-declare string buffer;
+////pretty cool program that calculates how old you will be in 10 years 
+//// gets compiled to 96 bytes (half of that being the strings cus strings always massive)
+//declare int age;
+//declare string buffer;
+//
+//push string "Enter your age:"
+//syscall print
+//
+//push buffer
+//syscall read
+//
+//push age
+//push buffer
+//syscall parse
+//
+//push string "in 10 years your age will be:"
+//syscall print
+//
+//
+//push age
+//push 10b
+//
+//math add
+//syscall print
+//
+//
+//push 0b
+//exit
 
-push string "Enter your age:"
-syscall print
-
-push buffer
-syscall read
-
-push age
-push buffer
-syscall parse
-
-push string "in 10 years your age will be:"
-syscall print
+////declare bool isAlive = true;
+//declare int idk = 10;
+//
+//push false
+//push idk
+//
+//
+////push isAlive
+//exit
 
 
-push age
-push 10b
-
-math add
-syscall print
-
-
-push 0b
+//smallest program (9 bytes in release mode)
+push false
 exit

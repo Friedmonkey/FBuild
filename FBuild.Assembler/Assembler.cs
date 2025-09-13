@@ -24,7 +24,14 @@ public partial class FriedAssembler : AnalizerBase<char>
     public FriedAssembler(Ilogger logger) : base('\0') 
     {
         this.logger = logger;
+        Type boolean = FindType("bool");
+        constTrue = new Declare(boolean, "true", [0x01]) { isConst = true, used = true };
+        constFalse = new Declare(boolean, "false", [0x00]) { isConst = true, used = true };
     }
+
+    private Declare constTrue = null;
+    private Declare constFalse = null;
+
     private Dictionary<string, string> Defines = new Dictionary<string, string>();
     //private Dictionary<string, UInt64> Labels = new Dictionary<string, UInt64>();
     private List<Declare> Declares = new List<Declare>();
@@ -55,6 +62,9 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         input = ParsePreParser(input);
         UpdateAndReset();
+
+        AddDeclare(constFalse);
+        AddDeclare(constTrue);
 
         input = ParseDeclares(input);
         UpdateAndReset();
@@ -184,6 +194,8 @@ public partial class FriedAssembler : AnalizerBase<char>
         //declare meta
         var groupedByType = Declares.GroupBy(d => d.type);
         Declares = new List<Declare>();
+        Declares.Add(constFalse);
+        Declares.Add(constTrue);
         //from this point onwards Declares are basicly only used for indexing purposes
 
         var EmbeddedDeclares = new List<Declare>();
@@ -202,19 +214,7 @@ public partial class FriedAssembler : AnalizerBase<char>
             //AppendDeclared(declaredVar, isConst:false);
 
             //void AppendDeclared(IEnumerable<Declare> declared, bool isConst)
-            bool hasConst = (declared.Any(d => d.isConst));
-            if (hasConst)
-            {
-                var bytes = type.value.ToList();
-                byte constFirstByte = (byte)(bytes[0] | ConstantBitFlag);
-                bytes[0] = constFirstByte;
-                AppendBytes(bytes.ToArray());
-            }
-            else
-            { 
-                AppendBytes(type.value);
-                        
-            }
+
 
             if (includeSymbols && type.structDef is not null) //its struct
             {   //struct may contain more identifiers
@@ -228,6 +228,7 @@ public partial class FriedAssembler : AnalizerBase<char>
 
             //Declares.AddRange(declaredDefault);
             //Declares.AddRange(declaredValue);
+            bool hasConst = (declared.Any(d => d.isConst));
 
             var mutableDeclares = declared.Where(d => !d.isConst);
 
@@ -239,35 +240,60 @@ public partial class FriedAssembler : AnalizerBase<char>
                 declaredConst = declared.Except(mutableDeclares).Where(d => !d.value.SequenceEqual(d.type.default_value));
             }
 
-            EmbeddedDeclares.AddRange(declaredValue);
-            EmbeddedDeclares.AddRange(declaredConst);
-
             Declares.AddRange(declaredDefault);
             Declares.AddRange(declaredValue);
-            if (hasConst)
-            {
-                //if a type has const enabled then we add a single default for this const
-                //as we only need 1 because its const and it wont change
-                //neither will it be embedded in the binary since the VM also knows this
 
-                //empty declare because it technicly exists right here but wont be embedded
-                //but its added for indexing purposes
-                var singleDefaultconst = new Declare(type, "_const_"+type.name); 
+            bool isBoolean = (type.name == "boolean");
 
-                Declares.Add(singleDefaultconst);
-                Declares.AddRange(declaredConst);
+            if (isBoolean && Declares.Count() <= 2) //(true and false)
+                continue;
+
+            if (!isBoolean)
+            { 
+                EmbeddedDeclares.AddRange(declaredValue);
+                EmbeddedDeclares.AddRange(declaredConst);
+
+                if (hasConst)
+                {
+                    //if a type has const enabled then we add a single default for this const
+                    //as we only need 1 because its const and it wont change
+                    //neither will it be embedded in the binary since the VM also knows this
+
+                    //empty declare because it technicly exists right here but wont be embedded
+                    //but its added for indexing purposes
+                    var singleDefaultconst = new Declare(type, "_const_"+type.name); 
+
+                    Declares.Add(singleDefaultconst);
+                    Declares.AddRange(declaredConst);
+                }
             }
             if (includeSymbols)
             {
                 symbols.AddRange(declaredDefault.Select(d => d.name));
                 symbols.AddRange(declaredValue.Select(d => d.name));
-                symbols.Add("_const_" + type.name);
-                symbols.AddRange(declaredConst.Select(d => d.name));
+                if (hasConst && !isBoolean)
+                { 
+                    symbols.Add("_const_" + type.name);
+                    symbols.AddRange(declaredConst.Select(d => d.name));
+                }
+            }
+
+            if (hasConst)
+            {
+                var bytes = type.value.ToList();
+                byte constFirstByte = (byte)(bytes[0] | ConstantBitFlag);
+                bytes[0] = constFirstByte;
+                AppendBytes(bytes.ToArray());
+            }
+            else
+            {
+                AppendBytes(type.value);
             }
 
             AppendBytes(declaredDefault.Count().VLQ());
             AppendBytes(declaredValue.Count().VLQ());
-            if (hasConst)
+
+            if (hasConst && !isBoolean)
                 AppendBytes(declaredConst.Count().VLQ());
         }
         instructionHeaderPos = byteCount;
@@ -422,6 +448,16 @@ public partial class FriedAssembler : AnalizerBase<char>
             Consume('}');
             return var;
         }
+        //else if (Find("true") || Find("TRUE"))
+        //{
+        //    TypeCheck("bool");
+        //    bytes.Add(0x01);
+        //}
+        //else if (Find("false") || Find("FALSE"))
+        //{
+        //    TypeCheck("bool");
+        //    bytes.Add(0x00);
+        //}
         else if (Current == '"') //string
         {
             TypeCheck("string");

@@ -35,6 +35,8 @@ public class AssemblerDefinitions
         new Type("struct",          size:null, [0x0D]),
         new Type("array",           size:null, [0x0E]),
         new Type("pointer",         size:null, [0x0F]),
+
+        new Type("boolean",         size:null, [0x10], "bool"),
         
 
         new Type("uint8",           size:1,    [0x20], "char",   "byte", "u8"),

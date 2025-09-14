@@ -277,8 +277,8 @@
 
 
 //smallest program (9 bytes in release mode)
-push false
-exit
+//push false
+//exit
 
 ////number guessing  (asked chatgpt to generate it to see if it understood)
 //declare uint16 secret;
@@ -333,78 +333,158 @@ exit
 //exit
 //
 
-//asked chatgpt to add a 5 tries before showing (and gave them some tips to make it compile and cleaner)
+////asked chatgpt to add a 5 tries before showing (and gave them some tips to make it compile and cleaner)
+//
+//declare uint16 secret;
+//declare uint8 guess;
+//declare uint8 attempts = 5;
+//declare string buffer;
+//
+//// generate random number 1–100
+//push 1b
+//push 100b
+//math rand
+//
+//push secret
+//set_var
+//
+//:game_loop
+//// check if attempts == 0 → out of tries
+//push attempts
+//push 0b
+//comp eq
+//jump_if out_of_tries
+//
+//push string "guess a number (1-100): "
+//syscall print
+//
+//push buffer
+//syscall read
+//
+//push guess
+//push buffer
+//syscall parse
+//
+//// check if guess == secret
+//push guess
+//push secret
+//comp eq
+//jump_if correct
+//
+//// decrement attempts
+//push attempts
+//math dec
+//push attempts
+//set_var
+//
+//// check if guess < secret
+//push guess
+//push secret
+//comp lt
+//jump_if too_low
+//
+//// otherwise it's too high
+//push string "too high!"
+//syscall println
+//jump game_loop
+//
+//:too_low
+//push string "too low!"
+//syscall println
+//jump game_loop
+//
+//:correct
+//push string "nice!! you guessed it :D"
+//syscall println
+//push 0b
+//exit
+//
+//:out_of_tries
+//push string "out of tries! the number was: "
+//syscall print
+//
+//push secret
+//syscall println
+//
+//push 1b
+//exit
 
-declare uint16 secret;
-declare uint8 guess;
-declare uint8 attempts = 5;
-declare string buffer;
 
-// generate random number 1–100
-push 1b
-push 100b
-math rand
 
-push secret
-set_var
+//// push the implicit false boolean
+//push false
+//exit
 
-:game_loop
-// check if attempts == 0 → out of tries
-push attempts
-push 0b
-comp eq
-jump_if out_of_tries
 
-push string "guess a number (1-100): "
+declare string choice;
+declare const string rock = "rock";
+declare const string paper = "paper";
+declare const string shears = "shears";
+
+// ask player
+:starth
+push string "rock, paper, or shears? "
 syscall print
 
-push buffer
+push choice
 syscall read
 
-push guess
-push buffer
-syscall parse
+// check valid input
+push choice
+jump_if_stack rock correct_input
+jump_if_stack paper correct_input
+jump_if_stack shears correct_input
 
-// check if guess == secret
-push guess
-push secret
-comp eq
-jump_if correct
-
-// decrement attempts
-push attempts
-math dec
-push attempts
-set_var
-
-// check if guess < secret
-push guess
-push secret
-comp lt
-jump_if too_low
-
-// otherwise it's too high
-push string "too high!"
-syscall println
-jump game_loop
-
-:too_low
-push string "too low!"
-syscall println
-jump game_loop
-
-:correct
-push string "nice!! you guessed it :D"
-syscall println
-push 0b
-exit
-
-:out_of_tries
-push string "out of tries! the number was: "
-syscall print
-
-push secret
-syscall println
-
+push string "invalid input"
 push 1b
 exit
+
+:correct_input
+// computer random 0..2
+push 0b
+push 2b
+math rand
+
+// computer chooses
+jump_if_stack 0b computer_rock
+jump_if_stack 1b computer_paper
+jump_if_stack 2b computer_shears
+
+:computer_rock
+push choice
+jump_if_stack rock draw
+jump_if_stack paper player_wins
+jump_if_stack shears computer_wins
+
+:computer_paper
+push choice
+jump_if_stack rock computer_wins
+jump_if_stack paper draw
+jump_if_stack shears player_wins
+
+:computer_shears
+push choice
+jump_if_stack rock player_wins
+jump_if_stack paper computer_wins
+jump_if_stack shears draw
+
+:player_wins
+push string "you win!"
+syscall println
+jump retry
+
+:computer_wins
+push string "computer wins!"
+syscall println
+jump retry
+
+:draw
+push string "draw!"
+syscall println
+jump retry
+
+:retry
+pop
+pop
+jump starth
+

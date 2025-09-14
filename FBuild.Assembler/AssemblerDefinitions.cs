@@ -118,27 +118,35 @@ public class AssemblerDefinitions
     }
     public static IReadOnlyDictionary<string, InstructionDefinition> Instruction_definitions = new Dictionary<string, InstructionDefinition>(new[]
     {
-        OP("PUSH",      1),
-        OP("POP",       0),
-        OP("DUP",       1),
-        OP("MATH",      1),
-        OP("AND",       0),//unused
-        OP("OR",        0),//unused
-        OP("NOT",       0),
-        OP("COMP",      1),
-        OP("JUMP",      1),
-        OP("JUMP_IF",   1),
-        OP("CALL",      1),
-        OP("CALL_IF",   1),
-        OP("RET",       0),
-        OP("SYSCALL",   1),
-        OP("EXIT",      0),
+        OP("PUSH",          1),
+        OP("POP",           0),
+        OP("DUP",           1),
+        OP("MATH",          1),
+        OP("AND",           0),//unused
+        OP("OR",            0),//unused
+        OP("NOT",           0),
+        OP("COMP",          1),
+
+        OP("JUMP",          1),
+        OP("JUMP_IF",       1),
+        OP("JUMP_IF_STACK", 2),
+        OP("CALL",          1),
+        OP("CALL_IF",       1),
+        OP("CALL_IF_STACK", 2),
+
+        OP("EXIT",          0),
+        OP("SYSCALL",       1),
+
+        OP("RET",           0),
 
         OP("SET_BUFFER",	1),//unused
         OP("GET_BUFFER",	1),//unused
         OP("PUSH_BUFFER",	1),//unused
+
         OP("BUFFER_UTIL",   1),//unused
+
         OP("SET_VAR",       0),
+
         OP("SET_STRUCT",    2),//unused
         OP("GET_STRUCT",    2),//unused
         OP("CREATE_STRUCT", 2),//unused

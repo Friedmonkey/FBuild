@@ -35,6 +35,7 @@ public partial class FriedAssembler : AnalizerBase<char>
     private Dictionary<string, string> Defines = new Dictionary<string, string>();
     //private Dictionary<string, UInt64> Labels = new Dictionary<string, UInt64>();
     private List<Declare> Declares = new List<Declare>();
+    private HashSet<string> DefaultLabels = new();
     private List<Struct> Structs = new List<Struct>();
     private int declare_size = 0;
     private List<Instruction> Instructions = new List<Instruction>();
@@ -190,7 +191,8 @@ public partial class FriedAssembler : AnalizerBase<char>
             sb.Append(symbolHeader);
             byteCount += 0; //calculate later
         }
-
+        //weird edge case were we need to find default labesl but labels get calculated later so we need to make it work
+        DefaultLabels = Declares.Where(d => d.type.name == "label" && d.value.SequenceEqual(d.type.default_value)).Select(d => d.name).ToHashSet();
         //declare meta
         var groupedByType = Declares.GroupBy(d => d.type);
         Declares = new List<Declare>();
@@ -1344,8 +1346,16 @@ public partial class FriedAssembler : AnalizerBase<char>
 
         foreach (var arg in instruction.args)
         {
-            var idx = GetDeclareIndex(arg);
-            if (idx == -1) throw new Exception($"Varible \"{arg}\" not found!");
+            string declareName = arg;
+            if (DefaultLabels.Contains(declareName)) //weird edge case where the value is a default instead
+            {
+                declareName = "_const_label";
+            }
+            var idx = GetDeclareIndex(declareName);
+            if (idx == -1)
+            {
+                throw new Exception($"Varible \"{declareName}\" not found!");
+            }
             bytes.AddRange(idx.VLQ());
         }
         return bytes.ToArray();

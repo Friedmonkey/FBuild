@@ -111,47 +111,54 @@ public class AssemblerDefinitions
         else
             throw new KeyNotFoundException($"Type:\"{name}\" not found");
     }
-    private static byte opcode_index = 0;
-    private static KeyValuePair<string, InstructionDefinition> OP(string name, byte argcount)
+    //private static byte opcode_index = 0;
+    private static KeyValuePair<string, InstructionDefinition> OP(byte opcode_index, string name, byte argcount)
     {
-        return new KeyValuePair<string, InstructionDefinition>(name, new InstructionDefinition(name, opcode_index++, argcount));
+        return new KeyValuePair<string, InstructionDefinition>(name, new InstructionDefinition(name, opcode_index, argcount));
     }
     public static IReadOnlyDictionary<string, InstructionDefinition> Instruction_definitions = new Dictionary<string, InstructionDefinition>(new[]
     {
-        OP("PUSH",          1),
-        OP("POP",           0),
-        OP("DUP",           1),
-        OP("MATH",          1),
-        OP("AND",           0),//unused
-        OP("OR",            0),//unused
-        OP("NOT",           0),
-        OP("COMP",          1),
+        OP(0x0E, "EXIT",          1),
+        OP(0x0F, "SYSCALL",       1),
 
-        OP("JUMP",          1),
-        OP("JUMP_IF",       1),
-        OP("JUMP_IF_STACK", 2),
-        OP("CALL",          1),
-        OP("CALL_IF",       1),
-        OP("CALL_IF_STACK", 2),
 
-        OP("EXIT",          0),
-        OP("SYSCALL",       1),
+        OP(0x10, "PUSH",          1),
+        OP(0x11, "STORE",         1),
+        OP(0x12, "SET_VAR",       0),
+        OP(0x13, "POP",           0),
+        OP(0x14, "SWAP",          0),
+        OP(0x15, "DUP",           0),
 
-        OP("RET",           0),
 
-        OP("SET_BUFFER",	1),//unused
-        OP("GET_BUFFER",	1),//unused
-        OP("PUSH_BUFFER",	1),//unused
+        OP(0x30, "MATH",          1),
+        OP(0x31, "INC",           1),
+        OP(0x32, "DEC",           1),
 
-        OP("BUFFER_UTIL",   1),//unused
+        OP(0x40, "COMP",          1),
+        OP(0x41, "CHECK_STACK",   1),
+        OP(0x42, "NOT",           0),
 
-        OP("SET_VAR",       0),
+        OP(0x50, "JUMP",          1),
+        OP(0x51, "JUMP_IF",       1),   //will pop from stack
+        OP(0x52, "JUMP_IF_STACK", 2),   //will pop from stack
+        
+        OP(0x60, "CALL",          1),
+        OP(0x61, "CALL_IF",       1),   //will pop from stack
+        OP(0x62, "CALL_IF_STACK", 2),   //will pop from stack
 
-        OP("SET_STRUCT",    2),//unused
-        OP("GET_STRUCT",    2),//unused
-        OP("CREATE_STRUCT", 2),//unused
+        OP(0x6F, "RET",           0),   //return to previous call stack
 
-        OP("CHECK_STACK", 1),
+        OP(0xB0, "SET_BUFFER",	  1),//unused
+        OP(0xB1, "PUSH_BUFFER",	  1),//unused
+        OP(0xB2, "GET_BUFFER",    1),//unused
+
+        OP(0xB9, "BUFFER_UTIL",   1),//unused
+
+
+        OP(0xBA, "SET_STRUCT",    2),//unused
+        OP(0xBB, "GET_STRUCT",    2),//unused
+        OP(0xBC, "CREATE_STRUCT", 2),//unused
+
     });
     public static List<string> syscalls = new List<string>()
     {

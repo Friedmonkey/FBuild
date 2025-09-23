@@ -416,75 +416,131 @@
 //exit
 
 
-declare string choice;
-declare const string rock = "rock";
-declare const string paper = "paper";
-declare const string shears = "shears";
+//declare uint8 score;
+//declare string choice;
+//declare const string rock = "rock";
+//declare const string paper = "paper";
+//declare const string shears = "shears";
+//
+//// ask player
+//:starth
+//push string "rock, paper, or shears? "
+//syscall print
+//
+//push choice
+//syscall read
+//
+//// check valid input
+//push choice
+//jump_if_stack rock correct_input
+//jump_if_stack paper correct_input
+//jump_if_stack shears correct_input
+//
+//push string "invalid input"
+//push 1b
+//exit
+//
+//:correct_input
+//// computer random 0..2
+//push 0b
+//push 2b
+//math rand
+//
+//// computer chooses
+//jump_if_stack 0b computer_rock
+//jump_if_stack 1b computer_paper
+//jump_if_stack 2b computer_shears
+//
+//:computer_rock
+//push choice
+//jump_if_stack rock draw
+//jump_if_stack paper player_wins
+//jump_if_stack shears computer_wins
+//
+//:computer_paper
+//push choice
+//jump_if_stack rock computer_wins
+//jump_if_stack paper draw
+//jump_if_stack shears player_wins
+//
+//:computer_shears
+//push choice
+//jump_if_stack rock player_wins
+//jump_if_stack paper computer_wins
+//jump_if_stack shears draw
+//
+//:player_wins
+//push string "you win!"
+//syscall println
+//jump retry
+//
+//:computer_wins
+//push string "computer wins!"
+//syscall println
+//jump retry
+//
+//:draw
+//push string "draw!"
+//syscall println
+//jump retry
+//
+//:retry
+//pop
+//pop
+//push string "lets try again!"
+//syscall println
+//jump starth
+//
+//push uint16 404
+//exit 
 
-// ask player
-:starth
-push string "rock, paper, or shears? "
+
+
+declare int age;
+
+push string "Hello World!"
+syscall println
+
+push string "What is your age?"
+syscall println
+push string "age:"
 syscall print
 
-push choice
 syscall read
+push age
+syscall parse
 
-// check valid input
-push choice
-jump_if_stack rock correct_input
-jump_if_stack paper correct_input
-jump_if_stack shears correct_input
+push age
+push 10b
+math add
+dup
+store age
 
-push string "invalid input"
-push 1b
-exit
+dup
+jump_if_stack 14b young //if you entered 4
 
-:correct_input
-// computer random 0..2
-push 0b
-push 2b
-math rand
+dup
+push 85b
+comp gt
+jump_if dead
 
-// computer chooses
-jump_if_stack 0b computer_rock
-jump_if_stack 1b computer_paper
-jump_if_stack 2b computer_shears
-
-:computer_rock
-push choice
-jump_if_stack rock draw
-jump_if_stack paper player_wins
-jump_if_stack shears computer_wins
-
-:computer_paper
-push choice
-jump_if_stack rock computer_wins
-jump_if_stack paper draw
-jump_if_stack shears player_wins
-
-:computer_shears
-push choice
-jump_if_stack rock player_wins
-jump_if_stack paper computer_wins
-jump_if_stack shears draw
-
-:player_wins
-push string "you win!"
+push string "In 10 years you will be: "
+syscall print
+push age
+syscall print
+push string " years old!"
 syscall println
-jump retry
 
-:computer_wins
-push string "computer wins!"
-syscall println
-jump retry
+exit 0b
 
-:draw
-push string "draw!"
-syscall println
-jump retry
+:young
+push string "you are the YOUNGEST person EVER!"
+syscall print
+exit 0b
 
-:retry
-pop
-pop
-jump starth
-
+:dead
+push string "In 10 years you will be: "
+syscall print
+push string "DEAD!"
+syscall print
+exit 0b

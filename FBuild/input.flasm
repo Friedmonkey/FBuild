@@ -496,51 +496,68 @@
 
 
 
+//declare int age;
+//
+//push string "Hello World!"
+//syscall println
+//
+//push string "What is your age?"
+//syscall println
+//push string "age:"
+//syscall print
+//
+//syscall read
+//push age
+//syscall parse
+//
+//push age
+//push 10b
+//math add
+//dup
+//store age
+//
+//dup
+//jump_if_stack 14b young //if you entered 4
+//
+//dup
+//push 85b
+//comp gt
+//jump_if dead
+//
+//push string "In 10 years you will be: "
+//syscall print
+//push age
+//syscall print
+//push string " years old!"
+//syscall println
+//
+//exit 0b
+//
+//:young
+//push string "you are the YOUNGEST person EVER!"
+//syscall print
+//exit 0b
+//
+//:dead
+//push string "In 10 years you will be: "
+//syscall print
+//push string "DEAD!"
+//syscall print
+//exit 0b
+
+
+
+declare string name;
 declare int age;
 
-push string "Hello World!"
-syscall println
-
-push string "What is your age?"
-syscall println
-push string "age:"
-syscall print
+syscall read
+store name
 
 syscall read
 push age
 syscall parse
 
-push age
-push 10b
-math add
-dup
-store age
-
-dup
-jump_if_stack 14b young //if you entered 4
-
-dup
-push 85b
-comp gt
-jump_if dead
-
-push string "In 10 years you will be: "
+push interpolated_string $"Hello {name}, you are {age} years old!"
 syscall print
-push age
-syscall print
-push string " years old!"
-syscall println
 
-exit 0b
-
-:young
-push string "you are the YOUNGEST person EVER!"
-syscall print
-exit 0b
-
-:dead
-push string "In 10 years you will be: "
-syscall print
-push string "DEAD!"
-syscall print
-exit 0b
+exit 40b

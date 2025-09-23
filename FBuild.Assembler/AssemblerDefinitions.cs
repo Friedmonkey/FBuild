@@ -141,6 +141,10 @@ public class AssemblerDefinitions
         OP(0x50, "JUMP",          1),
         OP(0x51, "JUMP_IF",       1),   //will pop from stack
         OP(0x52, "JUMP_IF_STACK", 2),   //will pop from stack
+
+        OP(0x5A, "SET_CASE",      1),
+        OP(0x5B, "SET_CASE_MODE", 1),
+        OP(0x5C, "JUMP_IF_CASE",  2),
         
         OP(0x60, "CALL",          1),
         OP(0x61, "CALL_IF",       1),   //will pop from stack

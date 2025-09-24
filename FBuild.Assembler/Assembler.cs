@@ -318,6 +318,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                 }
                 var subStringNames = subStrings.Split('»');
                 List<byte> bytes = new List<byte>();
+                bytes.AddRange(subStringNames.Count().VLQ());
                 foreach (var subStringName in subStringNames)
                 {
                     var idx = GetDeclareIndex(subStringName);

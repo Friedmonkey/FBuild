@@ -547,12 +547,163 @@
 
 
 
+////TODO add a score for how many times you won in a row and only end game if you lose
+////at a draw dont increase score but give another chance
+////add a direct_math opcode where it does the math and stores the result in the first varible!
+//
+//declare uint16 score = 0; //16 cus it it doesnt get turned into a char
+//declare string choice;
+//declare uint8 computer;
+//
+//declare const string rock = "rock";
+//declare const string paper = "paper";
+//declare const string shears = "shears";
+//
+//
+//push string "Welcome to "
+//call printRPS
+//
+//:start
+//push string "Enter either "
+//call printRPS
+//
+//push string "input: "
+//syscall print
+//
+//syscall read
+//store choice
+//
+//set_case choice
+//jump_if_case rock correct_input
+//jump_if_case paper correct_input
+//jump_if_case shears correct_input
+//
+//push string "incorrect input!"
+//syscall println
+//push choice
+//syscall print
+//push string " is not valid! choose either:"
+//call printRPS
+//exit uint16 404 //this shouldnt happen
+//
+//:correct_input
+//
+////genarate computer, 0=rock 1=paper 2=shears
+//push 0b
+//push 2b
+//math rand
+//store computer
+//
+//set_case computer
+//jump_if_case 0b computer_rock
+//jump_if_case 1b computer_paper
+//jump_if_case 2b computer_shears
+//exit uint16 404
+//
+//
+//:computer_rock
+//push rock
+//call printComputer
+//jump_if_case rock draw
+//jump_if_case paper player_wins
+//jump_if_case shears computer_wins
+//
+//:computer_paper
+//push paper
+//call printComputer
+//jump_if_case rock computer_wins
+//jump_if_case paper draw
+//jump_if_case shears player_wins
+//
+//:computer_shears
+//push shears
+//call printComputer
+//jump_if_case rock player_wins
+//jump_if_case paper computer_wins
+//jump_if_case shears draw
+//
+//exit uint16 40404 //if somehow choise wasnt either rock,paper or shears itll end up here after going trough all computer_rock,computer_paper,computer_shears
+//
+//:printComputer //hopefully they put the computer on the stack
+//push string "Computer chose: "
+//syscall print
+//syscall print //this should be the string they put on the stack
+//
+//push string " And you chose: "
+//syscall print
+//
+//push choice
+//syscall print
+//
+//push string " and therefore "
+//syscall print
+//
+//set_case choice //we set the choice case cus we know all 3 need it so why repeat
+//ret
+//
+//:player_wins
+//push string "YOU WIN!"
+//syscall println
+//push score
+//push 10b
+//math add
+//store score
+//jump retry
+//
+//:computer_wins
+//push string "YOU LOST. The Computer wins!"
+//syscall println
+//call printScore
+//exit 0b
+//
+//:draw
+//push string "its a draw!"
+//syscall println
+//inc score //1 extra score for getting draw
+//jump retry
+//
+//:retry
+//call printScore
+//push string "lets go again!"
+//syscall println
+//jump start
+//
+//:printScore
+//push string "Your score is: "
+//syscall print
+//push score
+//syscall println
+//ret
+//
+//:printRPS
+//syscall print //we prefix a string before calling (hopefully)
+//
+//push rock
+//call printItem
+//
+//push paper
+//call printItem
+//
+//push shears
+//syscall println
+//ret
+//
+//:printItem
+//syscall print
+//push string ", "
+//syscall print
+//ret
+
 declare string name;
 declare int age;
 
+push string "enter your name:"
+syscall print
 syscall read
 store name
 
+push string "enter your age:"
+syscall print
 syscall read
 push age
 syscall parse

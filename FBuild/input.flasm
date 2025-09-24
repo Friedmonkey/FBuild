@@ -697,12 +697,35 @@
 declare string name;
 declare int age;
 
-push string "enter your name:"
+//declare const string hello = "Hello ";
+//declare const string world = "World";
+//declare const string beautiful = "beautiful ";
+//declare const string bye = "Bye ";
+//declare const interpolated_string helloWorld = $"{hello}{world}";
+//declare const interpolated_string byeWorld = $"{bye}{world}";
+//declare const interpolated_string hbw = $"{hello}{beautiful}{world}";
+//declare const interpolated_string bbw = $"{bye}{beautiful}{world}";
+//declare const string strname = "name";
+//declare const string strage = "age";
+
+push interpolated_string %|"Hello |World"
+syscall println
+
+push interpolated_string %|"Hello |beautiful |World"
+syscall println
+
+push interpolated_string %|"Bye |World"
+syscall println
+
+push interpolated_string %|"Bye |beautiful |World"
+syscall println
+
+push interpolated_string %|"enter your |name:"
 syscall print
 syscall read
 store name
 
-push string "enter your age:"
+push interpolated_string %|"enter your |age:"
 syscall print
 syscall read
 push age

@@ -27,7 +27,7 @@ public class AssemblerDefinitions
     { 
         new Type("raw",                 size:null, [0x00]),
         new Type("string",              size:null, [0x01]),
-        new Type("interpolated_string", size:null, [0x02]),
+        new Type("interpolated_string", size:null, [0x02], "fried_string", "fstring"),
 
         new Type("lazy",            size:null, [0x0A]),
         //new Type("constant",        size:null, [0x0B], "const"),

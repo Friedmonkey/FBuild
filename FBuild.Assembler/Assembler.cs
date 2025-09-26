@@ -318,7 +318,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                 }
                 var subStringNames = subStrings.Split('»');
                 List<byte> bytes = new List<byte>();
-                bytes.AddRange(subStringNames.Count().VLQ());
+                //bytes.AddRange(subStringNames.Count().VLQ());
                 foreach (var subStringName in subStringNames)
                 {
                     var idx = GetDeclareIndex(subStringName);
@@ -1845,7 +1845,7 @@ public partial class FriedAssembler : AnalizerBase<char>
                 if (Current == '}') //$"hello{} {}world{} {}how {}are {}you"
                 {   //this syntax is probaly better then switching between $"hello {"world"} how {"are"} you"
                     //used as a delimiter to turn into smaller reusable strings
-                    Consume('{');
+                    Consume('}');
                     continue;
                 }
                 else if (Current == '"') //$"hello {"world"} how {"are"} you"

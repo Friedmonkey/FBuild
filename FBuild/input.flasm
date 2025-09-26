@@ -694,44 +694,326 @@
 //syscall print
 //ret
 
-declare string name;
-declare int age;
+//declare string name;
+//declare int age;
+//
+////declare const string hello = "Hello ";
+////declare const string world = "World";
+////declare const string beautiful = "beautiful ";
+////declare const string bye = "Bye ";
+////declare const interpolated_string helloWorld = $"{hello}{world}";
+////declare const interpolated_string byeWorld = $"{bye}{world}";
+////declare const interpolated_string hbw = $"{hello}{beautiful}{world}";
+////declare const interpolated_string bbw = $"{bye}{beautiful}{world}";
+////declare const string strname = "name";
+////declare const string strage = "age";
+//
+//push interpolated_string %|"Hello |World"
+//syscall println
+//
+//push interpolated_string %|"Hello |beautiful |World"
+//syscall println
+//
+//push interpolated_string %|"Bye |World"
+//syscall println
+//
+//push interpolated_string %|"Bye |beautiful |World"
+//syscall println
+//
+//push interpolated_string %|"enter your |name:"
+//syscall print
+//syscall read
+//store name
+//
+//push interpolated_string %|"enter your |age:"
+//syscall print
+//syscall read
+//push age
+//syscall parse
+//
+//push interpolated_string $"Hello {name}, you are {age} years old!"
+//syscall print
+//
+//exit 40b
 
-//declare const string hello = "Hello ";
-//declare const string world = "World";
-//declare const string beautiful = "beautiful ";
-//declare const string bye = "Bye ";
-//declare const interpolated_string helloWorld = $"{hello}{world}";
-//declare const interpolated_string byeWorld = $"{bye}{world}";
-//declare const interpolated_string hbw = $"{hello}{beautiful}{world}";
-//declare const interpolated_string bbw = $"{bye}{beautiful}{world}";
-//declare const string strname = "name";
-//declare const string strage = "age";
 
-push interpolated_string %|"Hello |World"
+
+
+//OLD ROCK PAPER SHEARS
+//declare uint16 score = 0; //16 cus it it doesnt get turned into a char
+//declare string choice;
+//declare uint8 computer;
+//
+//declare const string rock = "rock";
+//declare const string paper = "paper";
+//declare const string shears = "shears";
+//
+//
+//push string "Welcome to "
+//call printRPS
+//
+//:start
+//push string "Enter either "
+//call printRPS
+//
+//push string "input: "
+//syscall print
+//
+//syscall read
+//store choice
+//
+//set_case choice
+//jump_if_case rock correct_input
+//jump_if_case paper correct_input
+//jump_if_case shears correct_input
+//
+//push string "incorrect input!"
+//syscall println
+//push choice
+//syscall print
+//push string " is not valid! choose either:"
+//call printRPS
+//exit uint16 404 //this shouldnt happen
+//
+//:correct_input
+//
+////genarate computer, 0=rock 1=paper 2=shears
+//push 0b
+//push 2b
+//math rand
+//store computer
+//
+//set_case computer
+//jump_if_case 0b computer_rock
+//jump_if_case 1b computer_paper
+//jump_if_case 2b computer_shears
+//exit uint16 404
+//
+//
+//:computer_rock
+//push rock
+//call printComputer
+//jump_if_case rock draw
+//jump_if_case paper player_wins
+//jump_if_case shears computer_wins
+//
+//:computer_paper
+//push paper
+//call printComputer
+//jump_if_case rock computer_wins
+//jump_if_case paper draw
+//jump_if_case shears player_wins
+//
+//:computer_shears
+//push shears
+//call printComputer
+//jump_if_case rock player_wins
+//jump_if_case paper computer_wins
+//jump_if_case shears draw
+//
+//exit uint16 40404 //if somehow choise wasnt either rock,paper or shears itll end up here after going trough all computer_rock,computer_paper,computer_shears
+//
+//:printComputer //hopefully they put the computer on the stack
+//push string "Computer chose: "
+//syscall print
+//syscall print //this should be the string they put on the stack
+//
+//push string " And you chose: "
+//syscall print
+//
+//push choice
+//syscall print
+//
+//push string " and therefore "
+//syscall print
+//
+//set_case choice //we set the choice case cus we know all 3 need it so why repeat
+//ret
+//
+//:player_wins
+//push string "YOU WIN!"
+//syscall println
+//push score
+//push 10b
+//math add
+//store score
+//jump retry
+//
+//:computer_wins
+//push string "YOU LOST. The Computer wins!"
+//syscall println
+//call printScore
+//exit 0b
+//
+//:draw
+//push string "its a draw!"
+//syscall println
+//inc score //1 extra score for getting draw
+//jump retry
+//
+//:retry
+//call printScore
+//push string "lets go again!"
+//syscall println
+//jump start
+//
+//:printScore
+//push string "Your score is: "
+//syscall print
+//push score
+//syscall println
+//ret
+//
+//:printRPS
+//syscall print //we prefix a string before calling (hopefully)
+//
+//push rock
+//call printItem
+//
+//push paper
+//call printItem
+//
+//push shears
+//syscall println
+//ret
+//
+//:printItem
+//syscall print
+//push string ", "
+//syscall print
+//ret
+
+
+
+
+//NEW ROCK PAPER SHEARS WITH FSTRINGS
+declare uint16 score = 0; //16 cus it it doesnt get turned into a char
+declare string choice;
+declare uint8 computer;
+declare string computer_choice;
+
+declare const string rock = "rock";
+declare const string paper = "paper";
+declare const string shears = "shears";
+
+declare const fstring rps = %|"rock|, |paper|, |shears";
+declare const fstring enterEither = $"Enter either {rps}";
+
+push fstring $"Welcome to {rps}"
 syscall println
 
-push interpolated_string %|"Hello |beautiful |World"
+:start
+push enterEither
 syscall println
 
-push interpolated_string %|"Bye |World"
-syscall println
-
-push interpolated_string %|"Bye |beautiful |World"
-syscall println
-
-push interpolated_string %|"enter your |name:"
+push fstring %|"input|: "
 syscall print
+
 syscall read
-store name
+store choice
 
-push interpolated_string %|"enter your |age:"
+set_case choice
+jump_if_case rock correct_input
+jump_if_case paper correct_input
+jump_if_case shears correct_input
+
+push fstring %|"incorrect |input|!"
+syscall println
+push fstring $"{choice} is not valid! {enterEither}"
 syscall print
-syscall read
-push age
-syscall parse
+exit uint16 404 //this could happen
 
-push interpolated_string $"Hello {name}, you are {age} years old!"
+:correct_input
+
+//genarate computer, 0=rock 1=paper 2=shears
+push 0b
+push 2b
+math rand
+store computer
+
+set_case computer
+jump_if_case 0b computer_rock
+jump_if_case 1b computer_paper
+jump_if_case 2b computer_shears
+exit uint16 404
+
+
+:computer_rock
+push rock
+call printComputer
+jump_if_case rock draw
+jump_if_case paper player_wins
+jump_if_case shears computer_wins
+
+:computer_paper
+push paper
+call printComputer
+jump_if_case rock computer_wins
+jump_if_case paper draw
+jump_if_case shears player_wins
+
+:computer_shears
+push shears
+call printComputer
+jump_if_case rock player_wins
+jump_if_case paper computer_wins
+jump_if_case shears draw
+
+exit uint16 40404 //if somehow choise wasnt either rock,paper or shears itll end up here after going trough all computer_rock,computer_paper,computer_shears
+
+:printComputer //hopefully they put the computer on the stack
+store computer_choice // the string value that the computer chose
+push fstring $"The Computer {}chose: {computer_choice} And you {}chose: {choice} and therefore "
 syscall print
+set_case choice //we set the choice case cus we know all 3 need it so why repeat
+ret
 
-exit 40b
+:player_wins
+push string "YOU WIN!"
+syscall println
+push score
+push 10b
+math add
+store score
+jump retry
+
+:computer_wins
+push fstring %|"YOU LOST. |The Computer |wins!"
+syscall println
+call printScore
+exit 0b
+
+:draw
+push string "its a draw!"
+syscall println
+inc score //1 extra score for getting draw
+jump retry
+
+:retry
+call printScore
+push string "lets go again!"
+syscall println
+jump start
+
+:printScore
+push fstring $"Your score is{}: {score}"
+syscall println
+ret
+
+//all this fstring bullshit got me from a total of 472 bytes to 438 bytes
+//and these strings arent even that long/similar
+//so on bigger programs with more similair repeating strings it could save way more
+//it also saves on a few instructionms
+//becausing instead of having to push 2 values and call print twice 
+//u can push once and syscall print once as well
+
+
+z85 ZermoMQ text encoded version (expands from 438 bytes to 548 bytes but now its fully copyable):
+
+mP-8B8)PHs0rrgL0SS$d0rrsQ00-N-000xrcj.jgfaPfpcL4vha}U2.23.D&tNAk>3O&nw4<hAj4<qz=5fzDcfE
+4eJs@{]<gH8gZtP#3n1p$(EhE3LGtNAz{3PFX8u]zl@i9V!JtNJF43T+>$2@=8@i9V?K4H0BH5gOhls{w)R7.m-
+20UuUi9$XMJiUi!LayEnv9$Pw4atA{]i:+2X91Ke*f+t(DaA9FB!su..z!0L^Aa9Y%AT3O#wNPR20XtD6mq^iUA
+V!}cBzblaapzmZy?4y2wGV8kao=E%Aclm7iV[=zzEWQ9A+e:5aorR@azC)tzF%RtC42i3wfA68ra]?=lVl*XB-.
+hnao#y&z/YFJapfeRzE:(nz/)fkayPd#aARpdA+e<3A+cv0sX&3us4Mdg3rZe8awtNfr4Yo%Cwg@oaQ-1aB0a)l
+wo8a5aR5s1BAnNqzY&F3vqfQ54oWQ(AV/Bkz/Pzix(:yV0TO(m0Uc*:4?F*P4?X%G6e6O86:CG?1@vvV6Dd5]5c
+r1w3<)yJ0U3:-5Gh-pdLAXvk0/

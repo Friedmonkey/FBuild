@@ -1,59 +1,1041 @@
-﻿#define newline 0x0D, 0x0A
+﻿//declare string msg = "hello world";
+//
+//push msg
+//syscall print
 
-push @"Enter the first number:"
+//declare const<uint> test = 5;
+//
+//push 45
+//push 45
+//push 45
+//push 45
+//push 5
+//syscall dump
+//push 0
+//exit
+
+
+
+//declare uint one = 1;
+//declare uint two = 2;
+//declare uint three = 3;
+//declare uint four = 4;
+//declare uint five = 5;
+//declare uint zero;
+//declare uint zero2;
+//declare uint zero3;
+//
+//push three
+//exit
+
+//push one
+//push two
+//push three
+//push four
+//push five
+//push zero
+//push zero2
+//push zero3
+
+
+//declare int a = 5;
+
+//declare array<array<char>> abc = [['a'],['b'],['c']];
+//declare string hello = "hello world";
+
+//jump start
+
+//:end
+//push 0
+//exit
+
+//:start
+//push 20
+//push 50
+//math add
+//jump sayHello
+
+//:sayHello
+////push hello
+//syscall print
+//jump end
+
+
+
+//push 5
+//exit
+
+//
+//push abc
+
+//declare string hello = "hello world";
+//
+//push 55
+//push 555
+//push 123456789
+//push hello
+//syscall dump
+
+//declare int exitCode = 10;
+//declare string msg = "hello world";
+
+//set_buffer msg
+//buffer_util REMOVE_FROM_END
+//get_buffer msg
+//push msg
+//syscall print
+
+
+//push exitCode
+//push u32 4
+//math sub
+//exit
+
+//push 0_.____5f
+
+//push 5
+//exit
+
+
+
+////example program that actually works (gets compiled to 95 bytes, this code in text form is 186 bytes)
+//declare string name;
+//
+//push string "Enter your name:"
+//syscall print
+//
+//push name
+//syscall read
+//
+//push string "your name is:"
+//syscall print
+//
+//push name
+//syscall print
+//
+//push 0
+//exit
+
+//declare int a = 500;
+//declare int b = 25;
+//
+//
+//push a
+//push b
+//
+//math div
+//
+//exit
+
+
+//declare byte a = 50;
+//declare byte ad = add;
+//
+//push add
+//exit
+
+//inline declares dont get omitted to default when using 0 as its value
+
+
+//declare int a = 0;
+
+//push 0 //doesnt get turned into default declare but const with value 0 (the default)
+//push a //correctly gets omited from output binary because a has 0 which is default
+//exit
+
+
+
+////example program that actually works (gets compiled to 95 bytes, this code in text form is 186 bytes)
+//declare string name;
+//
+//push string "Enter your name:"
+//syscall print
+//
+//push name
+//syscall read
+//
+//push string "your name is:"
+//syscall print
+//
+//push name
+//syscall print
+//
+//push 0
+//exit
+
+
+
+//declare int aValue = 54;
+//
+//push aValue
+//push 20
+//
+//math sub
+//
+//exit
+
+//push 0b
+//push 0b
+//exit
+
+
+//push 25b
+//jump multiply
+//
+//:end
+//exit
+//
+//:multiply
+//push 10b
+//math mul
+//jump end
+
+//declare array<byte> byteArray = [0xFF, 0x69, 0x 10];
+//push 0b
+//exit
+
+
+//push 25b
+//call multiply
+//jump_if_stack
+//
+//exit
+//
+//:multiply
+//push 10b
+//math mul
+//ret
+
+//push 10.5f
+//push 20
+//math mul
+//
+////cast byte typeof(uint32)
+//
+//exit
+
+
+
+////pretty small random number genarator
+////the index for random is 0x09 so thats why i chose 9
+//// so we can use 1 byte for the max value and for the random math call
+//// we chose zero because it doesnt add a byte because its default value
+//
+////we manually declare these so they arent const
+//// which wouldve added a single byte
+////if we run in release mode we get 17 bytes for this entire program
+////for reference all the opcodes are combined 16 bytes
+//// (push, push, math, exit)
+////thats without data or header so 17 bytes is pretty good
+//declare uint8 zero = 0;
+//declare uint8 nine = rand;
+//push zero
+//push nine
+//math nine
+//
+//exit
+
+
+////pretty cool program that calculates how old you will be in 10 years 
+//// gets compiled to 96 bytes (half of that being the strings cus strings always massive)
+//declare int age;
+//declare string buffer;
+//
+//push string "Enter your age:"
+//syscall print
+//
+//push buffer
+//syscall read
+//
+//push age
+//push buffer
+//syscall parse
+//
+//push string "in 10 years your age will be:"
+//syscall print
+//
+//
+//push age
+//push 10b
+//
+//math add
+//syscall print
+//
+//
+//push 0b
+//exit
+
+////declare bool isAlive = true;
+//declare int idk = 10;
+//
+//push false
+//push idk
+//
+//
+////push isAlive
+//exit
+
+
+//smallest program (9 bytes in release mode)
+//push false
+//exit
+
+////number guessing  (asked chatgpt to generate it to see if it understood)
+//declare uint16 secret;
+//declare uint16 guess;
+//declare string buffer;
+//
+//// generate random number 1–100
+//push 1b
+//push 100b
+//math rand
+//
+//push secret
+//set_var
+//
+//:game_loop
+//push string "guess a number (1-100): "
+//syscall print
+//
+//push buffer
+//syscall read
+//
+//push guess
+//push buffer
+//syscall parse
+//
+//// check if guess == secret
+//push guess
+//push secret
+//comp eq
+//jump_if correct
+//
+//// check if guess < secret
+//push guess
+//push secret
+//comp lt
+//jump_if too_low
+//
+//// otherwise it's too high
+//push string "too high!"
+//syscall println
+//jump game_loop
+//
+//:too_low
+//push string "too low!"
+//syscall println
+//jump game_loop
+//
+//:correct
+//push string "nice!! you guessed it :D"
+//syscall println
+//push 0b
+//exit
+//
+
+////asked chatgpt to add a 5 tries before showing (and gave them some tips to make it compile and cleaner)
+//
+//declare uint16 secret;
+//declare uint8 guess;
+//declare uint8 attempts = 5;
+//declare string buffer;
+//
+//// generate random number 1–100
+//push 1b
+//push 100b
+//math rand
+//
+//push secret
+//set_var
+//
+//:game_loop
+//// check if attempts == 0 → out of tries
+//push attempts
+//push 0b
+//comp eq
+//jump_if out_of_tries
+//
+//push string "guess a number (1-100): "
+//syscall print
+//
+//push buffer
+//syscall read
+//
+//push guess
+//push buffer
+//syscall parse
+//
+//// check if guess == secret
+//push guess
+//push secret
+//comp eq
+//jump_if correct
+//
+//// decrement attempts
+//push attempts
+//math dec
+//push attempts
+//set_var
+//
+//// check if guess < secret
+//push guess
+//push secret
+//comp lt
+//jump_if too_low
+//
+//// otherwise it's too high
+//push string "too high!"
+//syscall println
+//jump game_loop
+//
+//:too_low
+//push string "too low!"
+//syscall println
+//jump game_loop
+//
+//:correct
+//push string "nice!! you guessed it :D"
+//syscall println
+//push 0b
+//exit
+//
+//:out_of_tries
+//push string "out of tries! the number was: "
+//syscall print
+//
+//push secret
+//syscall println
+//
+//push 1b
+//exit
+
+
+
+//// push the implicit false boolean
+//push false
+//exit
+
+
+//declare uint8 score;
+//declare string choice;
+//declare const string rock = "rock";
+//declare const string paper = "paper";
+//declare const string shears = "shears";
+//
+//// ask player
+//:starth
+//push string "rock, paper, or shears? "
+//syscall print
+//
+//push choice
+//syscall read
+//
+//// check valid input
+//push choice
+//jump_if_stack rock correct_input
+//jump_if_stack paper correct_input
+//jump_if_stack shears correct_input
+//
+//push string "invalid input"
+//push 1b
+//exit
+//
+//:correct_input
+//// computer random 0..2
+//push 0b
+//push 2b
+//math rand
+//
+//// computer chooses
+//jump_if_stack 0b computer_rock
+//jump_if_stack 1b computer_paper
+//jump_if_stack 2b computer_shears
+//
+//:computer_rock
+//push choice
+//jump_if_stack rock draw
+//jump_if_stack paper player_wins
+//jump_if_stack shears computer_wins
+//
+//:computer_paper
+//push choice
+//jump_if_stack rock computer_wins
+//jump_if_stack paper draw
+//jump_if_stack shears player_wins
+//
+//:computer_shears
+//push choice
+//jump_if_stack rock player_wins
+//jump_if_stack paper computer_wins
+//jump_if_stack shears draw
+//
+//:player_wins
+//push string "you win!"
+//syscall println
+//jump retry
+//
+//:computer_wins
+//push string "computer wins!"
+//syscall println
+//jump retry
+//
+//:draw
+//push string "draw!"
+//syscall println
+//jump retry
+//
+//:retry
+//pop
+//pop
+//push string "lets try again!"
+//syscall println
+//jump starth
+//
+//push uint16 404
+//exit 
+
+
+
+//declare int age;
+//
+//push string "Hello World!"
+//syscall println
+//
+//push string "What is your age?"
+//syscall println
+//push string "age:"
+//syscall print
+//
+//syscall read
+//push age
+//syscall parse
+//
+//push age
+//push 10b
+//math add
+//dup
+//store age
+//
+//dup
+//jump_if_stack 14b young //if you entered 4
+//
+//dup
+//push 85b
+//comp gt
+//jump_if dead
+//
+//push string "In 10 years you will be: "
+//syscall print
+//push age
+//syscall print
+//push string " years old!"
+//syscall println
+//
+//exit 0b
+//
+//:young
+//push string "you are the YOUNGEST person EVER!"
+//syscall print
+//exit 0b
+//
+//:dead
+//push string "In 10 years you will be: "
+//syscall print
+//push string "DEAD!"
+//syscall print
+//exit 0b
+
+
+
+////TODO add a score for how many times you won in a row and only end game if you lose
+////at a draw dont increase score but give another chance
+////add a direct_math opcode where it does the math and stores the result in the first varible!
+//
+//declare uint16 score = 0; //16 cus it it doesnt get turned into a char
+//declare string choice;
+//declare uint8 computer;
+//
+//declare const string rock = "rock";
+//declare const string paper = "paper";
+//declare const string shears = "shears";
+//
+//
+//push string "Welcome to "
+//call printRPS
+//
+//:start
+//push string "Enter either "
+//call printRPS
+//
+//push string "input: "
+//syscall print
+//
+//syscall read
+//store choice
+//
+//set_case choice
+//jump_if_case rock correct_input
+//jump_if_case paper correct_input
+//jump_if_case shears correct_input
+//
+//push string "incorrect input!"
+//syscall println
+//push choice
+//syscall print
+//push string " is not valid! choose either:"
+//call printRPS
+//exit uint16 404 //this shouldnt happen
+//
+//:correct_input
+//
+////genarate computer, 0=rock 1=paper 2=shears
+//push 0b
+//push 2b
+//math rand
+//store computer
+//
+//set_case computer
+//jump_if_case 0b computer_rock
+//jump_if_case 1b computer_paper
+//jump_if_case 2b computer_shears
+//exit uint16 404
+//
+//
+//:computer_rock
+//push rock
+//call printComputer
+//jump_if_case rock draw
+//jump_if_case paper player_wins
+//jump_if_case shears computer_wins
+//
+//:computer_paper
+//push paper
+//call printComputer
+//jump_if_case rock computer_wins
+//jump_if_case paper draw
+//jump_if_case shears player_wins
+//
+//:computer_shears
+//push shears
+//call printComputer
+//jump_if_case rock player_wins
+//jump_if_case paper computer_wins
+//jump_if_case shears draw
+//
+//exit uint16 40404 //if somehow choise wasnt either rock,paper or shears itll end up here after going trough all computer_rock,computer_paper,computer_shears
+//
+//:printComputer //hopefully they put the computer on the stack
+//push string "Computer chose: "
+//syscall print
+//syscall print //this should be the string they put on the stack
+//
+//push string " And you chose: "
+//syscall print
+//
+//push choice
+//syscall print
+//
+//push string " and therefore "
+//syscall print
+//
+//set_case choice //we set the choice case cus we know all 3 need it so why repeat
+//ret
+//
+//:player_wins
+//push string "YOU WIN!"
+//syscall println
+//push score
+//push 10b
+//math add
+//store score
+//jump retry
+//
+//:computer_wins
+//push string "YOU LOST. The Computer wins!"
+//syscall println
+//call printScore
+//exit 0b
+//
+//:draw
+//push string "its a draw!"
+//syscall println
+//inc score //1 extra score for getting draw
+//jump retry
+//
+//:retry
+//call printScore
+//push string "lets go again!"
+//syscall println
+//jump start
+//
+//:printScore
+//push string "Your score is: "
+//syscall print
+//push score
+//syscall println
+//ret
+//
+//:printRPS
+//syscall print //we prefix a string before calling (hopefully)
+//
+//push rock
+//call printItem
+//
+//push paper
+//call printItem
+//
+//push shears
+//syscall println
+//ret
+//
+//:printItem
+//syscall print
+//push string ", "
+//syscall print
+//ret
+
+//declare string name;
+//declare int age;
+//
+////declare const string hello = "Hello ";
+////declare const string world = "World";
+////declare const string beautiful = "beautiful ";
+////declare const string bye = "Bye ";
+////declare const interpolated_string helloWorld = $"{hello}{world}";
+////declare const interpolated_string byeWorld = $"{bye}{world}";
+////declare const interpolated_string hbw = $"{hello}{beautiful}{world}";
+////declare const interpolated_string bbw = $"{bye}{beautiful}{world}";
+////declare const string strname = "name";
+////declare const string strage = "age";
+//
+//push interpolated_string %|"Hello |World"
+//syscall println
+//
+//push interpolated_string %|"Hello |beautiful |World"
+//syscall println
+//
+//push interpolated_string %|"Bye |World"
+//syscall println
+//
+//push interpolated_string %|"Bye |beautiful |World"
+//syscall println
+//
+//push interpolated_string %|"enter your |name:"
+//syscall print
+//syscall read
+//store name
+//
+//push interpolated_string %|"enter your |age:"
+//syscall print
+//syscall read
+//push age
+//syscall parse
+//
+//push interpolated_string $"Hello {name}, you are {age} years old!"
+//syscall print
+//
+//exit 40b
+
+
+
+
+//OLD ROCK PAPER SHEARS
+//declare uint16 score = 0; //16 cus it it doesnt get turned into a char
+//declare string choice;
+//declare uint8 computer;
+//
+//declare const string rock = "rock";
+//declare const string paper = "paper";
+//declare const string shears = "shears";
+//
+//
+//push string "Welcome to "
+//call printRPS
+//
+//:start
+//push string "Enter either "
+//call printRPS
+//
+//push string "input: "
+//syscall print
+//
+//syscall read
+//store choice
+//
+//set_case choice
+//jump_if_case rock correct_input
+//jump_if_case paper correct_input
+//jump_if_case shears correct_input
+//
+//push string "incorrect input!"
+//syscall println
+//push choice
+//syscall print
+//push string " is not valid! choose either:"
+//call printRPS
+//exit uint16 404 //this shouldnt happen
+//
+//:correct_input
+//
+////genarate computer, 0=rock 1=paper 2=shears
+//push 0b
+//push 2b
+//math rand
+//store computer
+//
+//set_case computer
+//jump_if_case 0b computer_rock
+//jump_if_case 1b computer_paper
+//jump_if_case 2b computer_shears
+//exit uint16 404
+//
+//
+//:computer_rock
+//push rock
+//call printComputer
+//jump_if_case rock draw
+//jump_if_case paper player_wins
+//jump_if_case shears computer_wins
+//
+//:computer_paper
+//push paper
+//call printComputer
+//jump_if_case rock computer_wins
+//jump_if_case paper draw
+//jump_if_case shears player_wins
+//
+//:computer_shears
+//push shears
+//call printComputer
+//jump_if_case rock player_wins
+//jump_if_case paper computer_wins
+//jump_if_case shears draw
+//
+//exit uint16 40404 //if somehow choise wasnt either rock,paper or shears itll end up here after going trough all computer_rock,computer_paper,computer_shears
+//
+//:printComputer //hopefully they put the computer on the stack
+//push string "Computer chose: "
+//syscall print
+//syscall print //this should be the string they put on the stack
+//
+//push string " And you chose: "
+//syscall print
+//
+//push choice
+//syscall print
+//
+//push string " and therefore "
+//syscall print
+//
+//set_case choice //we set the choice case cus we know all 3 need it so why repeat
+//ret
+//
+//:player_wins
+//push string "YOU WIN!"
+//syscall println
+//push score
+//push 10b
+//math add
+//store score
+//jump retry
+//
+//:computer_wins
+//push string "YOU LOST. The Computer wins!"
+//syscall println
+//call printScore
+//exit 0b
+//
+//:draw
+//push string "its a draw!"
+//syscall println
+//inc score //1 extra score for getting draw
+//jump retry
+//
+//:retry
+//call printScore
+//push string "lets go again!"
+//syscall println
+//jump start
+//
+//:printScore
+//push string "Your score is: "
+//syscall print
+//push score
+//syscall println
+//ret
+//
+//:printRPS
+//syscall print //we prefix a string before calling (hopefully)
+//
+//push rock
+//call printItem
+//
+//push paper
+//call printItem
+//
+//push shears
+//syscall println
+//ret
+//
+//:printItem
+//syscall print
+//push string ", "
+//syscall print
+//ret
+
+
+
+
+//NEW ROCK PAPER SHEARS WITH FSTRINGS
+declare uint16 score = 0; //16 cus it it doesnt get turned into a char
+declare string choice;
+declare uint8 computer;
+declare string computer_choice;
+
+declare const string rock = "rock";
+declare const string paper = "paper";
+declare const string shears = "shears";
+
+declare const fstring rps = %|"rock|, |paper|, |shears";
+declare const fstring enterEither = $"Enter either {rps}";
+
+push fstring $"Welcome to {rps}"
+syscall println
+
+:start
+push enterEither
+syscall println
+
+push fstring %|"input|: "
 syscall print
 
-declare a;
-push a
-call getNumber
-
-push @newline, "Enter the second number:"
-syscall print
-
-declare b;
-push b
-call getNumber
-
-push @newline, "Now enter an opcode", newline,
-"All avalible opcodes are:", newline,
-"ADD = 0", newline,
-"SUB = 1", newline,
-"MUL = 4", newline,
-"DIV = 5", newline,
-"POW = 6", newline,
-"ROOT = 7", newline,
-"SQRT = 8", newline,
-"RAND = 9", newline,
-"Opcode index:"
-
-syscall print
-
-declare index;
-push index
-call getNumber
-
-push a
-push b
-math index
-
-set_buffer @"Your number is: %d"
-buffer_util format
-
-declare output;
-get_buffer output
-
-push output
-syscall print
-
-push 0
-exit
-
-:getNumber
-dup 0
-dup 0
 syscall read
-syscall to_number_signed
-dup 1
-set_var
-pop
+store choice
+
+set_case choice
+jump_if_case rock correct_input
+jump_if_case paper correct_input
+jump_if_case shears correct_input
+
+push fstring %|"incorrect |input|!"
+syscall println
+push fstring $"{choice} is not valid! {enterEither}"
+syscall print
+exit uint16 404 //this could happen
+
+:correct_input
+
+//genarate computer, 0=rock 1=paper 2=shears
+push 0b
+push 2b
+math rand
+store computer
+
+set_case computer
+jump_if_case 0b computer_rock
+jump_if_case 1b computer_paper
+jump_if_case 2b computer_shears
+exit uint16 404
+
+
+:computer_rock
+push rock
+call printComputer
+jump_if_case rock draw
+jump_if_case paper player_wins
+jump_if_case shears computer_wins
+
+:computer_paper
+push paper
+call printComputer
+jump_if_case rock computer_wins
+jump_if_case paper draw
+jump_if_case shears player_wins
+
+:computer_shears
+push shears
+call printComputer
+jump_if_case rock player_wins
+jump_if_case paper computer_wins
+jump_if_case shears draw
+
+exit uint16 40404 //if somehow choise wasnt either rock,paper or shears itll end up here after going trough all computer_rock,computer_paper,computer_shears
+
+:printComputer //hopefully they put the computer on the stack
+store computer_choice // the string value that the computer chose
+push fstring $"The Computer {}chose: {computer_choice} And you {}chose: {choice} and therefore "
+syscall print
+set_case choice //we set the choice case cus we know all 3 need it so why repeat
 ret
+
+:player_wins
+push string "YOU WIN!"
+syscall println
+push score
+push 10b
+math add
+store score
+jump retry
+
+:computer_wins
+push fstring %|"YOU LOST. |The Computer |wins!"
+syscall println
+call printScore
+exit 0b
+
+:draw
+push string "its a draw!"
+syscall println
+inc score //1 extra score for getting draw
+jump retry
+
+:retry
+call printScore
+push string "lets go again!"
+syscall println
+jump start
+
+:printScore
+push fstring $"Your score is{}: {score}"
+syscall println
+ret
+
+//all this fstring bullshit got me from a total of 472 bytes to 438 bytes
+//and these strings arent even that long/similar
+//so on bigger programs with more similair repeating strings it could save way more
+//it also saves on a few instructionms
+//becausing instead of having to push 2 values and call print twice 
+//u can push once and syscall print once as well
+
+
+//z85 ZermoMQ text encoded version (expands from 438 bytes to 548 bytes but now its fully copyable):
+//
+//mP-8B8)PHs0rrgL0SS$d0rrsQ00-N-000xrcj.jgfaPfpcL4vha}U2.23.D&tNAk>3O&nw4<hAj4<qz=5fzDcfE
+//4eJs@{]<gH8gZtP#3n1p$(EhE3LGtNAz{3PFX8u]zl@i9V!JtNJF43T+>$2@=8@i9V?K4H0BH5gOhls{w)R7.m-
+//20UuUi9$XMJiUi!LayEnv9$Pw4atA{]i:+2X91Ke*f+t(DaA9FB!su..z!0L^Aa9Y%AT3O#wNPR20XtD6mq^iUA
+//V!}cBzblaapzmZy?4y2wGV8kao=E%Aclm7iV[=zzEWQ9A+e:5aorR@azC)tzF%RtC42i3wfA68ra]?=lVl*XB-.
+//hnao#y&z/YFJapfeRzE:(nz/)fkayPd#aARpdA+e<3A+cv0sX&3us4Mdg3rZe8awtNfr4Yo%Cwg@oaQ-1aB0a)l
+//wo8a5aR5s1BAnNqzY&F3vqfQ54oWQ(AV/Bkz/Pzix(:yV0TO(m0Uc*:4?F*P4?X%G6e6O86:CG?1@vvV6Dd5]5c
+//r1w3<)yJ0U3:-5Gh-pdLAXvk0/
+
+
+declare int numBuffer;
+:testProgram
+push string "Enter a number and ill add 10"
+syscall println
+push string "Number:"
+syscall print
+
+syscall read
+push numBuffer
+syscall parse
+
+push numBuffer
+push 10b
+math add
+
+store numBuffer
+
+push fstring $"With 10 added to it you get:{numBuffer}"
+syscall print
+exit 0b

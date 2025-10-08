@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FBuild.Common;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -15,33 +16,40 @@ public class Struct
     public string name;
     public List<StructField> fields = new();
     public bool used = false;
-    public Declare MakeDeclare()
-    { 
-        int count = fields.Count;
-        if (count > byte.MaxValue) throw new Exception("Too many fields");
+    //public Type GetType()
+    //{ 
+    //    int count = fields.Count;
+    //    //if (count > byte.MaxValue) throw new Exception("Too many fields");
 
-        List<byte> bytes = new();
-        bytes.Add(0xFF);
-        bytes.Add((byte)count);
-        bytes.AddRange(fields.Select(f => (byte)f.size));
-        foreach (StructField f in fields)
-        {
-            bytes.AddRange(f.inital_value);
-        }
-        return new Declare(name, bytes.ToArray()) { used = this.used};
-    }
+    //    List<byte> bytes = new();
+    //    bytes.AddRange(count.VLQ());
+    //    foreach (StructField f in fields)
+    //    {
+    //        bytes.AddRange(f.type.value);
+    //        //bytes.AddRange(f.inital_value);
+    //    }
+    //    foreach (StructField f in fields)
+    //    {
+    //        bytes.AddRange(f.inital_value);
+    //    }
+    //    //bytes.Add((byte)count);
+    //    //bytes.AddRange(fields.Select(f => (byte)f.size));
+    //    return new Type("struct", bytes.ToArray()) { structDef = this };
+    //}
 }
 
 [DebuggerDisplay("{name}:{value}")]
 public class StructField
 {
-    public StructField(string name)
+    public StructField(Type type, string name)
     {
+        this.type = type;
         this.name = name;
     }
+    public Type type;
     public string name;
-    public int size;
-    public bool immidiate;
     public byte[] inital_value;
-    public string address = null;
+    //public int size;
+    //public bool immidiate;
+    //public string address = null;
 }

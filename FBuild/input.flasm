@@ -1008,12 +1008,34 @@ ret
 //u can push once and syscall print once as well
 
 
-z85 ZermoMQ text encoded version (expands from 438 bytes to 548 bytes but now its fully copyable):
+//z85 ZermoMQ text encoded version (expands from 438 bytes to 548 bytes but now its fully copyable):
+//
+//mP-8B8)PHs0rrgL0SS$d0rrsQ00-N-000xrcj.jgfaPfpcL4vha}U2.23.D&tNAk>3O&nw4<hAj4<qz=5fzDcfE
+//4eJs@{]<gH8gZtP#3n1p$(EhE3LGtNAz{3PFX8u]zl@i9V!JtNJF43T+>$2@=8@i9V?K4H0BH5gOhls{w)R7.m-
+//20UuUi9$XMJiUi!LayEnv9$Pw4atA{]i:+2X91Ke*f+t(DaA9FB!su..z!0L^Aa9Y%AT3O#wNPR20XtD6mq^iUA
+//V!}cBzblaapzmZy?4y2wGV8kao=E%Aclm7iV[=zzEWQ9A+e:5aorR@azC)tzF%RtC42i3wfA68ra]?=lVl*XB-.
+//hnao#y&z/YFJapfeRzE:(nz/)fkayPd#aARpdA+e<3A+cv0sX&3us4Mdg3rZe8awtNfr4Yo%Cwg@oaQ-1aB0a)l
+//wo8a5aR5s1BAnNqzY&F3vqfQ54oWQ(AV/Bkz/Pzix(:yV0TO(m0Uc*:4?F*P4?X%G6e6O86:CG?1@vvV6Dd5]5c
+//r1w3<)yJ0U3:-5Gh-pdLAXvk0/
 
-mP-8B8)PHs0rrgL0SS$d0rrsQ00-N-000xrcj.jgfaPfpcL4vha}U2.23.D&tNAk>3O&nw4<hAj4<qz=5fzDcfE
-4eJs@{]<gH8gZtP#3n1p$(EhE3LGtNAz{3PFX8u]zl@i9V!JtNJF43T+>$2@=8@i9V?K4H0BH5gOhls{w)R7.m-
-20UuUi9$XMJiUi!LayEnv9$Pw4atA{]i:+2X91Ke*f+t(DaA9FB!su..z!0L^Aa9Y%AT3O#wNPR20XtD6mq^iUA
-V!}cBzblaapzmZy?4y2wGV8kao=E%Aclm7iV[=zzEWQ9A+e:5aorR@azC)tzF%RtC42i3wfA68ra]?=lVl*XB-.
-hnao#y&z/YFJapfeRzE:(nz/)fkayPd#aARpdA+e<3A+cv0sX&3us4Mdg3rZe8awtNfr4Yo%Cwg@oaQ-1aB0a)l
-wo8a5aR5s1BAnNqzY&F3vqfQ54oWQ(AV/Bkz/Pzix(:yV0TO(m0Uc*:4?F*P4?X%G6e6O86:CG?1@vvV6Dd5]5c
-r1w3<)yJ0U3:-5Gh-pdLAXvk0/
+
+declare int numBuffer;
+:testProgram
+push string "Enter a number and ill add 10"
+syscall println
+push string "Number:"
+syscall print
+
+syscall read
+push numBuffer
+syscall parse
+
+push numBuffer
+push 10b
+math add
+
+store numBuffer
+
+push fstring $"With 10 added to it you get:{numBuffer}"
+syscall print
+exit 0b
